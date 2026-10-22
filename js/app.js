@@ -58,12 +58,14 @@
       rows.sort((a, b) => numbered ? (a.position - b.position) : a.stop.name.localeCompare(b.stop.name));
     }
     const total = rows.length, shown = rows.slice(0, 300);
+    $('list').dataset.route = (numbered && !query && !pickCtx) ? [...visible][0] : '';
     $('count').textContent = (query ? 'Resultados: ' : 'Visibles: ') + total;
     $('list').innerHTML = shown.map(r => {
       const s = r.stop, sel = s.id === BV.panel.current() ? ' sel' : '';
       const dots = (r.routeIds || []).map(id => `<i style="background:${C.ROUTE_COLORS[id] || '#888'}" title="R${id}"></i>`).join('');
+      const canDrag = numbered && !query && !pickCtx;
       const pos = (numbered && !query) ? `<small>${r.position}</small>` : '';
-      return `<li class="${sel}${s.active ? '' : ' off'}" data-id="${s.id}">${pos}<span>${esc(s.name)}</span>
+      return `<li class="${sel}${s.active ? '' : ' off'}" data-id="${s.id}" data-pos="${r.position ?? ''}">${canDrag ? '<b class="grip" title="Arrastra para cambiar la posición">⠿</b>' : ''}${pos}<span>${esc(s.name)}</span>
         ${s.note ? '<u title="' + esc(s.note) + '">!</u>' : ''}${s.opens_at ? '<code>' + s.opens_at.slice(0, 5) + '</code>' : ''}<div class="dots">${dots}</div></li>`;
     }).join('') + (total > shown.length ? `<li class="more">… ${total - shown.length} más. Afina la búsqueda.</li>` : '');
   }
@@ -78,6 +80,7 @@
   // Contexto "estoy eligiendo dónde cae la parada": el mapa muestra solo la ruta destino numerada.
   BV.ui = {
     refresh,
+    selectStop(id) { select(id); },
     setPick(ctx) {
       const key = ctx ? ctx.stopId + '>' + ctx.to : '';
       if (key === (pickCtx ? pickCtx.stopId + '>' + pickCtx.to : '')) return;
@@ -99,6 +102,57 @@
     const s = BV.state.stops.get(id);
     if (pan && s) BV.map.panTo(s);
     document.querySelectorAll('#list li').forEach(li => li.classList.toggle('sel', li.dataset.id === id));
+  }
+
+  /* ---------- reordenar arrastrando (solo desde el asa ⠿, para no romper el scroll del celular) ---------- */
+  function enableDrag() {
+    const list = $('list');
+    let drag = null;
+    const clear = () => list.querySelectorAll('.drop-before,.drop-after,.dragging').forEach(l => l.classList.remove('drop-before', 'drop-after', 'dragging'));
+    const end = () => { if (drag) { cancelAnimationFrame(drag.raf); clear(); drag = null; } };
+    const loop = () => {
+      if (!drag) return;
+      const r = list.getBoundingClientRect(), y = drag.y;
+      if (y < r.top + 40) list.scrollTop -= Math.ceil((r.top + 40 - y) / 4);
+      else if (y > r.bottom - 40) list.scrollTop += Math.ceil((y - (r.bottom - 40)) / 4);
+      mark(); drag.raf = requestAnimationFrame(loop);
+    };
+    function mark() {
+      clear(); drag.li.classList.add('dragging');
+      let target = null, after = false;
+      for (const l of list.querySelectorAll('li[data-id]')) {
+        if (l === drag.li || !l.dataset.pos) continue;
+        const r = l.getBoundingClientRect();
+        target = l; if (drag.y < r.top + r.height / 2) { after = false; break; } after = true;
+      }
+      drag.target = target; drag.after = after;
+      if (target) target.classList.add(after ? 'drop-after' : 'drop-before');
+    }
+    list.addEventListener('pointerdown', e => {
+      const g = e.target.closest('.grip'); if (!g || e.button > 0) return;
+      e.preventDefault();
+      const li = g.closest('li[data-id]');
+      try { g.setPointerCapture(e.pointerId); } catch (_) { /* sin captura */ }
+      drag = { li, id: li.dataset.id, pid: e.pointerId, y: e.clientY, route: list.dataset.route, old: Number(li.dataset.pos), target: null, after: false, raf: 0 };
+      mark(); drag.raf = requestAnimationFrame(loop);
+    });
+    list.addEventListener('pointermove', e => { if (drag && e.pointerId === drag.pid) drag.y = e.clientY; });
+    list.addEventListener('pointercancel', end);
+    list.addEventListener('pointerup', async e => {
+      if (!drag || e.pointerId !== drag.pid) return;
+      const d = drag; end();
+      if (!d.target) return;
+      const slot = Number(d.target.dataset.pos) + (d.after ? 1 : 0);
+      const final = slot > d.old ? slot - 1 : slot;
+      if (final === d.old) return;
+      try {
+        await BV.data.reorder(d.id, d.route, final);
+        BV.toast(`${BV.state.stops.get(d.id).name}: posición ${d.old} → ${final}`);
+        refresh();
+      } catch (err) { BV.toast('No se reordenó: ' + (err.message || err), 'err'); refresh(); }
+    });
+    list.addEventListener('click', e => { if (e.target.closest('.grip')) e.stopPropagation(); }, true);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && drag) end(); });
   }
 
   /* ---------- eventos ---------- */
@@ -153,7 +207,7 @@
     }
     const saved = ls.get('bv_visible', null);
     visible = new Set(saved ? saved.filter(r => BV.data.route(r)) : BV.state.routes.map(r => r.id));
-    wire();
+    wire(); enableDrag(); BV.history.wire();
     mapKey = ls.get('bvMapsApiKey', null);
     if (mapKey) {
       try { await BV.map.init(mapKey, $('map')); $('nomap').hidden = true; }

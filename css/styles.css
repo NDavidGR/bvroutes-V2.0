@@ -144,3 +144,29 @@ dialog form{display:grid;gap:14px} dialog h2{margin:0}
   .btn-ghost.sm{min-height:40px}
   #list li{padding:13px 12px}
 }
+
+/* historial */
+dialog.wide{width:min(900px,96vw);max-height:88dvh;flex-direction:column;padding:0;overflow:hidden}
+dialog.wide[open]{display:flex}
+.hist-head{display:flex;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.hist-head h2{margin:0;font-size:17px;flex:1;min-width:150px}
+.hist-head input,.hist-head select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.hist-body{overflow:auto;padding:4px 16px 16px;display:grid;align-content:start}
+.hrow{display:grid;grid-template-columns:64px 96px minmax(120px,220px) 1fr;gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
+.hrow time{font-size:12px;display:grid;line-height:1.2} .hrow time small{color:var(--muted)}
+.hty{font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;background:var(--card2);justify-self:start}
+.hty-move{background:color-mix(in srgb,var(--violet) 35%,var(--card2))} .hty-add{background:color-mix(in srgb,var(--ok) 30%,var(--card2))}
+.hty-remove,.hty-deactivate{background:color-mix(in srgb,var(--err) 30%,var(--card2))} .hty-reorder{background:color-mix(in srgb,var(--amber) 30%,var(--card2))}
+.hstop{text-align:left;text-decoration:none;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.hstop:hover{color:var(--amber);text-decoration:underline}
+.hdet{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
+.hdet .tag{background:var(--c);color:var(--t);border-radius:5px;padding:1px 6px;font-size:12px}
+.diff s{opacity:.6} .diff b{color:var(--ink)}
+@media (max-width:900px){.hrow{grid-template-columns:56px 1fr;grid-template-areas:"t y" "s s" "d d"}.hrow time{grid-area:t}.hrow .hty{grid-area:y}.hrow .hstop{grid-area:s}.hrow .hdet{grid-area:d}}
+
+/* reordenar */
+.grip{touch-action:none;cursor:grab;user-select:none;color:var(--muted);font-size:18px;line-height:1;padding:6px 4px;margin:-6px 0 -6px -6px;flex:none}
+.grip:active{cursor:grabbing}
+#list li.dragging{opacity:.45}
+#list li.drop-before{box-shadow:inset 0 3px 0 var(--amber)} #list li.drop-after{box-shadow:inset 0 -3px 0 var(--amber)}
+@media (max-width:900px){.grip{padding:12px 10px;margin:-12px 0 -12px -8px}}

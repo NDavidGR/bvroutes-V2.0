@@ -84,6 +84,21 @@
       await BV.data.reloadMembers();
     },
 
+    async reorder(stopId, routeId, pos) {
+      const { error } = await sb.rpc('reorder_stop', { p_route: routeId, p_stop: stopId, p_pos: pos });
+      if (error) throw error;
+      await BV.data.reloadMembers();
+    },
+
+    // Historial: los más recientes primero. before = fecha del último ya cargado, para paginar.
+    async history({ before = null, limit = 200 } = {}) {
+      let q = sb.from('changes').select('*').order('at', { ascending: false }).limit(limit);
+      if (before) q = q.lt('at', before);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+
     // Paradas de una ruta ordenadas por cercanía a un punto (millas).
     nearest(routeId, lat, lng, excludeId, n = 4) {
       if (lat == null || lng == null) return [];
