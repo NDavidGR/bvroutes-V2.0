@@ -211,7 +211,7 @@
       if (r.more) return `<div class="ac-i ac-more" data-i="${i}">${acList.length === 1 ? `Nada en la ruta ${esc(route)}. ` : ''}Ver ${r.more} de otras rutas ▸</div>`;
       const nm = esc(r.stop.name).replace(new RegExp('(' + esc(q) + ')', 'ig'), '<mark>$1</mark>');
       const rs = r.inRoute ? '' : BV.data.routesOf(r.stop.id).map(m => `<b class="tag" style="${tagCol(m.route_id)}">R${esc(m.route_id)}</b>`).join(' ');
-      return `<div class="ac-i" data-i="${i}">${nm}${rs ? ` <span class="ac-r">${rs}</span>` : ''}</div>`;
+      return `<div class="ac-i" data-i="${i}"><span class="ac-n">${nm}</span>${rs ? ` <span class="ac-r">${rs}</span>` : ''}</div>`;
     }).join('');
     const cs = getComputedStyle(ta), lh = parseFloat(cs.lineHeight) || 22, pt = parseFloat(cs.paddingTop) || 14;
     box.style.top = Math.min(pt + (ln.index + 1) * lh - ta.scrollTop, ta.clientHeight - 30) + 'px';
