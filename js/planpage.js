@@ -234,18 +234,11 @@
       toast(`${s.name} agregada a R${route}` + (a ? ` después de ${a.stop.name}` : '')); render(); save(route);
     } catch (e) { toast('No se agregó: ' + (e.message || e), 'err'); }
   }
-  // Coordenadas desde "lat, lng" o desde un enlace de Google Maps (@lat,lng o !3dlat!4dlng).
-  function parseCoords(txt) {
-    const t = String(txt || '');
-    const m = t.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) || t.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/) || t.match(/(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)/);
-    if (!m) return null;
-    const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
-    return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
-  }
+  const parseCoords = t => BV.map.parseCoords(t);
   let creating = null;
   function create(i) {
     creating = i; const l = cur().lines[i];
-    $('nw-name').value = l.raw; $('nw-coords').value = ''; $('nw-hint').textContent = 'Sin coordenadas la parada no aparece en el mapa.';
+    $('nw-name').value = l.raw; $('nw-addr').value = ''; $('nw-coords').value = ''; $('nw-hint').textContent = 'Sin coordenadas la parada no aparece en el mapa.';
     $('dlg-new').showModal(); $('nw-coords').focus();
   }
   function previewCoords() {
@@ -263,8 +256,7 @@
     if (raw && !c) { toast('Coordenadas no válidas', 'err'); return; }
     try {
       const s = await BV.data.createStop(name, [], c ? c.lat : null, c ? c.lng : null);
-      const a = c && isOrdered() ? BV.data.nearest(route, c.lat, c.lng, s.id, 1)[0] : null;
-      await BV.data.addToRoute(s.id, route, a ? a.position + 1 : null);
+      const a = await BV.data.addAfterNearest(s.id, route, c ? c.lat : null, c ? c.lng : null);
       l.stop_id = s.id; l.status = statusOf(s.id); l.raw = l.raw;
       $('dlg-new').close();
       toast(`${name} creada` + (a ? ` en R${route}, después de ${a.stop.name}` : ` en R${route}` + (c ? '' : ' (sin ubicación)')));
@@ -355,6 +347,14 @@
       else if (t.dataset.del != null) { cur().lines.splice(Number(t.dataset.del), 1); render(); save(route); }
     });
     $('nw-coords').addEventListener('input', previewCoords);
+    $('nw-find').onclick = async () => {
+      const q = $('nw-addr').value.trim(); if (!q) return;
+      const key = ls.get('bvMapsApiKey', null); if (!key) { $('nw-hint').textContent = 'Falta la llave de Google Maps (se pide en la app de Rutas).'; return; }
+      $('nw-hint').textContent = 'Buscando…';
+      try { const r = await BV.map.geocode(q, key); $('nw-coords').value = r.lat.toFixed(6) + ', ' + r.lng.toFixed(6); previewCoords(); $('nw-hint').textContent = 'Encontré: ' + r.text + '. ' + $('nw-hint').textContent; }
+      catch (e) { $('nw-hint').textContent = e.message; }
+    };
+    $('nw-addr').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('nw-find').click(); } });
     $('form-new').addEventListener('submit', confirmCreate);
     $('nw-cancel').onclick = () => $('dlg-new').close();
     enableDrag();

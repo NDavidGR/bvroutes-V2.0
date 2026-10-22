@@ -182,3 +182,6 @@ dialog.wide[open]{display:flex}
 
 .lnkbtn{text-decoration:none;display:inline-flex;align-items:center;color:var(--ink)}
 .lnkbtn:hover{border-color:var(--amber)}
+
+.row.nw{display:flex;gap:8px;flex-wrap:nowrap;margin-top:6px}.row.nw input{flex:1;min-width:0}
+#dlg-new .fld input{width:100%}

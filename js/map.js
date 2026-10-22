@@ -51,6 +51,26 @@
     onMoved(fn) { onMoved = fn; },
     onHover(fn) { onHover = fn; },
     gmap() { return map; },
+    load(key) { return loadScript(key); },
+    // Coordenadas desde "lat, lng" o desde un enlace de Google Maps (@lat,lng o !3dlat!4dlng).
+    parseCoords(txt) {
+      const t = String(txt || '');
+      const m = t.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) || t.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/) || t.match(/(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)/);
+      if (!m) return null;
+      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
+    },
+    // Dirección -> coordenadas (Google Geocoder, sesgado hacia el sur de Florida).
+    async geocode(address, key) {
+      await loadScript(key);
+      return new Promise((resolve, reject) => {
+        new google.maps.Geocoder().geocode({ address, bounds: { south: 25.0, west: -80.9, north: 27.0, east: -79.9 }, region: 'us' }, (r, st) => {
+          if (st === 'OK' && r && r.length) resolve({ lat: r[0].geometry.location.lat(), lng: r[0].geometry.location.lng(), text: r[0].formatted_address });
+          else reject(new Error(st === 'ZERO_RESULTS' ? 'No encontré esa dirección. Sé más específico (calle, número, ciudad).'
+            : st === 'REQUEST_DENIED' ? 'Google rechazó la búsqueda: hay que activar "Geocoding API" en la llave de Google Maps.' : 'Error de búsqueda: ' + st));
+        });
+      });
+    },
     // Con fn, un clic en un pin llama fn(stopId) en vez de abrir la parada (modo "elegir referencia").
     setPickMode(fn) { pickFn = fn; if (wrap) wrap.classList.toggle('picking', !!fn); },
     // Línea que une las paradas en el orden recibido (items ya ordenados). null = sin línea.

@@ -114,6 +114,13 @@
       if (error) throw error;
     },
 
+    // Agrega la parada a la ruta justo después de la parada más cercana. Devuelve esa vecina (o null).
+    async addAfterNearest(stopId, routeId, lat, lng) {
+      const a = (BV.data.route(routeId).ordered && lat != null) ? BV.data.nearest(routeId, lat, lng, stopId, 1)[0] || null : null;
+      await BV.data.addToRoute(stopId, routeId, a ? a.position + 1 : null);
+      return a;
+    },
+
     // Paradas de una ruta ordenadas por cercanía a un punto (millas).
     nearest(routeId, lat, lng, excludeId, n = 4) {
       if (lat == null || lng == null) return [];

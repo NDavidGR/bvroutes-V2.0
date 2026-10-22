@@ -7,6 +7,7 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } }
   };
+  const NEW_HINT = 'Sin dirección ni coordenadas, se crea en el centro del mapa y arrastras el pin a su lugar.';
   let visible = new Set(), showInactive = false, query = '', mapKey = null, pickCtx = null, lineOn = false;
   const hidden = new Set();   // paradas apagadas en el mapa (solo vista, no se guarda en la base)
 
@@ -193,18 +194,40 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && BV.panel.current()) $('drawer-close').click(); });
     $('btn-menu').onclick = () => document.body.classList.toggle('side-open');
     $('btn-out').onclick = async () => { await BV.auth.logout(); location.reload(); };
-    $('btn-new').onclick = () => { $('new-name').value = ''; $('new-routes').innerHTML = BV.state.routes.map(r =>
+    $('btn-new').onclick = () => { $('new-name').value = ''; $('new-addr').value = ''; $('new-coords').value = ''; $('new-hint').textContent = NEW_HINT; $('new-routes').innerHTML = BV.state.routes.map(r =>
       `<label class="rchip" style="--c:${C.ROUTE_COLORS[r.id]};--t:${C.textOn(C.ROUTE_COLORS[r.id])}"><input type="checkbox" value="${r.id}"><span>R${r.id}</span></label>`).join(''); $('dlg-new').showModal(); $('new-name').focus(); };
     $('new-cancel').onclick = () => $('dlg-new').close();
+    const newCoords = () => BV.map.parseCoords($('new-coords').value);
+    const newPreview = () => {
+      const h = $('new-hint'), txt = $('new-coords').value.trim();
+      if (!txt) { h.textContent = NEW_HINT; return; }
+      const c = newCoords(); if (!c) { h.textContent = 'No entiendo esas coordenadas. Formato: lat, lng'; return; }
+      const near = BV.state.routes.filter(r => document.querySelector(`#new-routes input[value="${r.id}"]:checked`) && r.ordered)
+        .map(r => { const a = BV.data.nearest(r.id, c.lat, c.lng, null, 1)[0]; return a ? `R${r.id}: después de ${a.stop.name} #${a.position} (${a.miles.toFixed(1)} mi)` : null; }).filter(Boolean);
+      h.textContent = near.length ? near.join(' · ') : 'Coordenadas válidas.';
+    };
+    $('new-coords').addEventListener('input', newPreview);
+    $('new-routes').addEventListener('change', newPreview);
+    $('new-find').onclick = async () => {
+      const q = $('new-addr').value.trim(); if (!q) return;
+      if (!mapKey) { $('new-hint').textContent = 'Falta la llave de Google Maps.'; return; }
+      $('new-hint').textContent = 'Buscando…';
+      try { const r = await BV.map.geocode(q, mapKey); $('new-coords').value = r.lat.toFixed(6) + ', ' + r.lng.toFixed(6); newPreview(); $('new-hint').textContent = 'Encontré: ' + r.text + '. ' + $('new-hint').textContent; }
+      catch (e) { $('new-hint').textContent = e.message; }
+    };
+    $('new-addr').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('new-find').click(); } });
     $('form-new').addEventListener('submit', async e => {
       e.preventDefault();
       const name = $('new-name').value.trim(); if (!name) return;
       const routes = [...document.querySelectorAll('#new-routes input:checked')].map(i => i.value);
-      const c = BV.map.available() ? BV.map.center() : C.MAP_CENTER;
+      const given = newCoords() && $('new-coords').value.trim() ? newCoords() : null;
+      const c = given || (BV.map.available() ? BV.map.center() : C.MAP_CENTER);
       try {
-        const s = await BV.data.createStop(name, routes, c.lat, c.lng);
-        routes.forEach(r => visible.add(r)); $('dlg-new').close(); refresh(); select(s.id, { pan: false });
-        BV.toast('Parada creada en el centro del mapa. Arrastra el pin a su lugar.');
+        const s = await BV.data.createStop(name, [], c.lat, c.lng);
+        for (const r of routes) await BV.data.addAfterNearest(s.id, r, given ? c.lat : null, given ? c.lng : null);
+        await BV.data.reloadMembers();
+        routes.forEach(r => visible.add(r)); $('dlg-new').close(); refresh(); select(s.id, { pan: !!given });
+        BV.toast(given ? 'Parada creada ✓' : 'Parada creada en el centro del mapa. Arrastra el pin a su lugar.');
       } catch (err) { BV.toast('No se creó: ' + err.message, 'err'); }
     });
     BV.map.onSelect(id => select(id, { pan: false }));

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BV Rutas 2.0</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231b1c1e'/%3E%3Ctext x='16' y='22' font-size='16' text-anchor='middle' fill='%23FFC107' font-family='sans-serif' font-weight='700'%3EBV%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/styles.css?v=11">
+<link rel="stylesheet" href="css/styles.css?v=12">
 </head>
 <body>
 
@@ -73,8 +73,10 @@
   <form id="form-new" method="dialog">
     <h2>Nueva parada</h2>
     <label class="fld"><span>Nombre</span><input id="new-name" required></label>
+    <div class="fld"><span>Dirección</span><div class="row nw"><input id="new-addr" placeholder="Calle, número, ciudad" autocomplete="off"><button type="button" id="new-find" class="btn-ghost">Buscar</button></div></div>
+    <label class="fld"><span>Coordenadas</span><input id="new-coords" placeholder="25.92616, -80.15595  (o enlace de Google Maps)" autocomplete="off"></label>
     <div class="fld"><span>Rutas</span><div id="new-routes" class="rchips"></div></div>
-    <p class="muted small">Se crea en el centro del mapa. Después arrastras el pin a su lugar o pegas las coordenadas.</p>
+    <p id="new-hint" class="muted small">Sin dirección ni coordenadas, se crea en el centro del mapa y arrastras el pin a su lugar.</p>
     <div class="row"><button class="btn" type="submit">Crear</button><button class="btn-ghost" type="button" id="new-cancel">Cancelar</button></div>
   </form>
 </dialog>
@@ -92,12 +94,12 @@
 <div id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
-<script src="js/config.js?v=11"></script>
-<script src="js/auth.js?v=11"></script>
-<script src="js/data.js?v=11"></script>
-<script src="js/map.js?v=11"></script>
-<script src="js/panel.js?v=11"></script>
-<script src="js/history.js?v=11"></script>
-<script src="js/app.js?v=11"></script>
+<script src="js/config.js?v=12"></script>
+<script src="js/auth.js?v=12"></script>
+<script src="js/data.js?v=12"></script>
+<script src="js/map.js?v=12"></script>
+<script src="js/panel.js?v=12"></script>
+<script src="js/history.js?v=12"></script>
+<script src="js/app.js?v=12"></script>
 </body>
 </html>

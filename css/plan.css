@@ -64,3 +64,6 @@ dialog.mapdlg[open]{display:flex}
 .ac-i:hover,.ac-i.sel{background:color-mix(in srgb,var(--amber) 20%,var(--card2))}
 .ac-i mark{background:none;color:var(--amber);font-weight:700}
 .ac-r .tag{background:var(--c);color:var(--t);border-radius:5px;padding:1px 6px;font-size:11px;font-weight:700}
+
+.row.nw{flex-wrap:nowrap}.row.nw input{flex:1;min-width:0}
+#dlg-new .fld input{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);width:100%}

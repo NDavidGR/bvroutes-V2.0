@@ -72,8 +72,9 @@
       ${zoneRows}
 
       <div class="fld"><span>Coordenadas <em>${lat}, ${lng}</em></span>
-        <input id="f-coords" placeholder="Pega aquí: 25.92616, -80.15595">
-        <small class="hint">O arrastra el pin en el mapa.</small>
+        <input id="f-coords" placeholder="Pega aquí: 25.92616, -80.15595 o enlace de Google Maps">
+        <div class="row nw"><input id="f-addr" placeholder="O busca por dirección: calle, número, ciudad" autocomplete="off"><button type="button" id="f-find" class="btn-ghost">Buscar</button></div>
+        <small class="hint" id="f-chint">O arrastra el pin en el mapa.</small>
       </div>
 
       <details class="more"><summary>Más datos</summary>
@@ -163,14 +164,26 @@
       save(kind === 'opens' ? { opens_at: v } : { tier: v }, { immediate: true });
       setTimeout(render, 0);
     }));
-    $('f-coords').addEventListener('change', e => {
-      const m = e.target.value.match(/(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)/);
-      if (!m) { BV.toast('Formato: lat, lng', 'err'); return; }
-      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
-      if (Math.abs(lat) > 90 || Math.abs(lng) > 180) { BV.toast('Coordenadas fuera de rango', 'err'); return; }
+    const applyCoords = (lat, lng) => {
       save({ lat, lng, coord_source: 'manual' }, { immediate: true });
       BV.map.setPosition(s.id, lat, lng); BV.map.panTo({ lat, lng }); setTimeout(render, 300);
+    };
+    $('f-coords').addEventListener('change', e => {
+      const c = BV.map.parseCoords(e.target.value);
+      if (!c) { BV.toast('Formato: lat, lng', 'err'); return; }
+      applyCoords(c.lat, c.lng);
     });
+    const find = async () => {
+      const q = $('f-addr').value.trim(); if (!q) return;
+      let key = null; try { key = JSON.parse(localStorage.getItem('bvMapsApiKey')); } catch (e) {}
+      const h = $('f-chint');
+      if (!key) { h.textContent = 'Falta la llave de Google Maps.'; return; }
+      h.textContent = 'Buscando…';
+      try { const r = await BV.map.geocode(q, key); applyCoords(r.lat, r.lng); }
+      catch (e) { h.textContent = e.message; }
+    };
+    $('f-find').addEventListener('click', find);
+    $('f-addr').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); find(); } });
     b.querySelectorAll('[data-add]').forEach(btn => btn.addEventListener('click', () => { pick = { mode: 'add', from: null, to: btn.dataset.add, q: '' }; render(); }));
     b.querySelectorAll('[data-move]').forEach(btn => btn.addEventListener('click', () => { pick = { mode: 'move', from: btn.dataset.move, to: null, q: '' }; render(); }));
     b.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', async () => {
