@@ -18,3 +18,7 @@ Panel de rutas sobre Supabase. Sitio estático (HTML + JS sin build): se publica
 
 ## SQL a ejecutar (en orden)
 `01_schema.sql` → `02_seed.sql` → `03_triggers.sql` → `04_move_functions.sql` (mover/agregar/quitar con renumeración y un solo registro de historial) → `05_reorder.sql` (reordenar arrastrando) → `06_day_plans.sql` (plan del día y sus versiones).
+
+## Páginas
+- `index.html` — Rutas: mapa, edición de paradas, mover/agregar, reordenar, historial.
+- `plan.html` — Plan del día: pegar paradas, ORGANIZE, salida ordenada, mapa del orden del día. Comparte la sesión con `index.html`.

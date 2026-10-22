@@ -104,6 +104,11 @@
       if (error) throw error;
       return (data && data[0]) || null;
     },
+    async loadPlansForDate(date) {
+      const { data, error } = await sb.from('day_plans').select('*').eq('plan_date', date);
+      if (error) throw error;
+      return data || [];
+    },
     async savePlan(row) {
       const { error } = await sb.from('day_plans').upsert(row, { onConflict: 'plan_date,route_id' });
       if (error) throw error;
