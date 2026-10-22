@@ -76,6 +76,13 @@ body.drawer-open #app{grid-template-columns:310px 1fr 360px;grid-template-areas:
 .pin-off{opacity:.45}
 .pin-depot{width:auto;min-width:28px;height:28px;border-radius:7px;background:#17181a;color:var(--amber);border-color:var(--amber);font:800 12px/24px var(--font);text-align:center;padding:0 5px}
 
+/* etiqueta al pasar el mouse y resaltes del selector */
+.maptip{position:absolute;pointer-events:none;background:#1b1c1e;color:#ebecee;border:1px solid #4a4c51;padding:5px 9px;border-radius:7px;font-size:12px;font-weight:600;white-space:nowrap;z-index:6;transform:translate(-50%,-135%);box-shadow:0 2px 8px #0006}
+.pin-hl{transform:scale(1.9);border-color:#fff;box-shadow:0 0 0 3px var(--violet),0 2px 8px #0008}
+.picking .pin{cursor:crosshair}
+.prow.hl{background:color-mix(in srgb,var(--violet) 28%,transparent)}
+.refbox{display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--amber);border-radius:8px;background:color-mix(in srgb,var(--amber) 10%,var(--card2))}
+
 /* drawer */
 .drawer-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card);z-index:2}
 .drawer-head h2{margin:0;font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

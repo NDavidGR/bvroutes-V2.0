@@ -7,7 +7,7 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } }
   };
-  let visible = new Set(), showInactive = false, query = '', mapKey = null;
+  let visible = new Set(), showInactive = false, query = '', mapKey = null, pickCtx = null;
 
   BV.toast = (msg, kind) => {
     const t = $('toast'); t.textContent = msg; t.dataset.kind = kind || ''; t.classList.add('show');
@@ -17,11 +17,12 @@
   /* ---------- qué se ve ---------- */
   function visibleItems() {
     const items = [];
-    const single = visible.size === 1 ? BV.data.route([...visible][0]) : null;
+    const vis = pickCtx ? new Set([pickCtx.to]) : visible;   // eligiendo posición: solo la ruta destino
+    const single = vis.size === 1 ? BV.data.route([...vis][0]) : null;
     const numbered = single && single.ordered;
     const byStop = new Map();
     BV.state.members.forEach(m => {
-      if (!visible.has(m.route_id)) return;
+      if (!vis.has(m.route_id)) return;
       if (!byStop.has(m.stop_id)) byStop.set(m.stop_id, []);
       byStop.get(m.stop_id).push(m);
     });
@@ -30,6 +31,10 @@
       if (!stop || (!stop.active && !showInactive)) return;
       items.push({ stop, routeIds: ms.map(m => m.route_id), label: numbered ? ms[0].position : null, position: ms[0].position });
     });
+    if (pickCtx) {   // la parada que se está moviendo siempre se ve (sin número)
+      const mv = BV.state.stops.get(pickCtx.stopId);
+      if (mv && !byStop.has(mv.id)) items.push({ stop: mv, routeIds: BV.data.routesOf(mv.id).map(m => m.route_id), label: null, position: null });
+    }
     return { items, numbered };
   }
 
@@ -70,7 +75,22 @@
     $('summary').textContent = items.length + ' paradas en el mapa';
     if (BV.panel.current()) BV.map.select(BV.panel.current());
   }
-  BV.ui = { refresh };
+  // Contexto "estoy eligiendo dónde cae la parada": el mapa muestra solo la ruta destino numerada.
+  BV.ui = {
+    refresh,
+    setPick(ctx) {
+      const key = ctx ? ctx.stopId + '>' + ctx.to : '';
+      if (key === (pickCtx ? pickCtx.stopId + '>' + pickCtx.to : '')) return;
+      pickCtx = ctx;
+      BV.map.setPickMode(ctx && ctx.ordered ? id => BV.panel.pickRef(id) : null);
+      refresh();
+      if (ctx && BV.map.available()) {
+        const mv = BV.state.stops.get(ctx.stopId);
+        const near = BV.data.nearest(ctx.to, mv.lat, mv.lng, mv.id, 4);
+        BV.map.fit([{ stop: mv }, ...near.map(n => ({ stop: n.stop }))]);
+      }
+    }
+  };
 
   function select(id, { pan = true } = {}) {
     document.body.classList.remove('side-open');
@@ -114,6 +134,7 @@
       } catch (err) { BV.toast('No se creó: ' + err.message, 'err'); }
     });
     BV.map.onSelect(id => select(id, { pan: false }));
+    BV.map.onHover(id => BV.panel.hoverRow(id));
     BV.map.onMoved(async (id, lat, lng) => {
       try { await BV.data.updateStop(id, { lat, lng, coord_source: 'manual' }); BV.toast('Pin guardado ✓'); if (BV.panel.current() === id) BV.panel.open(id); }
       catch (err) { BV.toast('No se guardó el pin: ' + err.message, 'err'); BV.map.setPosition(id, BV.state.stops.get(id).lat, BV.state.stops.get(id).lng); }

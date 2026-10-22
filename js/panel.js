@@ -5,7 +5,8 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const TYPES = [['', 'Sin definir'], ['customer', 'Cliente'], ['vendor', 'Proveedor'], ['freight', 'Carga / forwarder'], ['warehouse', 'Almacén']];
   let current = null, timers = {}, onChange = () => {};
-  let pick = null; // { mode:'add'|'move', from, to, q }
+  let pick = null; // { mode:'add'|'move', from, to, q, ref }
+  let ctxKey = '';
 
   function status(txt, kind) { const e = $('save-status'); if (!e) return; e.textContent = txt; e.dataset.kind = kind || ''; }
 
@@ -44,6 +45,7 @@
     const addChips = BV.state.routes.filter(r => !ms.some(m => m.route_id === r.id)).map(r =>
       `<button type="button" class="rchip" data-add="${r.id}" style="${chipCol(r.id)}">+ R${r.id}</button>`).join('');
     const pickerHtml = pick ? pickerMarkup(s) : '';
+    syncCtx(s);
     const zoneRows = ms.filter(m => !BV.data.route(m.route_id).ordered).map(m =>
       `<label class="fld"><span>Zona en R${m.route_id}</span><input data-zone="${m.route_id}" value="${esc(m.zone || '')}" placeholder="Downtown, Brickell, Kendall…"></label>`).join('');
     const lat = s.lat != null ? s.lat.toFixed(6) : '—', lng = s.lng != null ? s.lng.toFixed(6) : '—';
@@ -90,8 +92,15 @@
     bind(s);
   }
 
+  function syncCtx(s) {
+    const key = pick && pick.to ? s.id + '>' + pick.to : '';
+    if (key === ctxKey) return;
+    ctxKey = key;
+    BV.ui.setPick(key ? { stopId: s.id, to: pick.to, ordered: !!BV.data.route(pick.to).ordered } : null);
+  }
+
   function posBtns(stopRow, label) {
-    return `<div class="prow"><span class="pname">${esc(stopRow.stop.name)} <small class="muted">#${stopRow.position}${stopRow.miles != null ? ' · ' + stopRow.miles.toFixed(1) + ' mi' : ''}</small></span>
+    return `<div class="prow" data-sid="${stopRow.stop.id}"><span class="pname">${esc(stopRow.stop.name)} <small class="muted">#${stopRow.position}${stopRow.miles != null ? ' · ' + stopRow.miles.toFixed(1) + ' mi' : ''}</small></span>
       <button type="button" class="btn-ghost sm" data-at="${stopRow.position}" title="Antes de esta parada">↑ antes</button>
       <button type="button" class="btn-ghost sm" data-at="${stopRow.position + 1}" title="Después de esta parada">↓ después</button></div>`;
   }
@@ -109,11 +118,18 @@
       return `<div class="picker">${head}<div class="hint">R${pick.to} no tiene orden: solo se agrega.</div>
         <input id="pk-zone" placeholder="Zona (opcional): Downtown, Brickell…"><button type="button" class="btn" data-at="">Confirmar</button></div>`;
     }
+    const refBox = pick.ref
+      ? `<div class="refbox"><span class="pname">Referencia: <b>${esc(pick.ref.name)}</b> <small class="muted">#${pick.ref.position}</small></span>
+          <button type="button" class="btn-ghost sm" data-at="${pick.ref.position}">↑ antes</button>
+          <button type="button" class="btn-ghost sm" data-at="${pick.ref.position + 1}">↓ después</button>
+          <button type="button" class="lnk" data-clearref>quitar</button></div>`
+      : '<div class="hint">Pasa el mouse por las filas para verlas en el mapa, o haz clic en un pin del mapa para usarlo como referencia.</div>';
     const q = (pick.q || '').trim().toUpperCase();
     const near = BV.data.nearest(pick.to, s.lat, s.lng, s.id, 4);
     const found = q ? BV.data.membersOf(pick.to).map(m => ({ stop: BV.state.stops.get(m.stop_id), position: m.position }))
       .filter(x => x.stop && x.stop.name.toUpperCase().includes(q)).slice(0, 6) : [];
     return `<div class="picker">${head}
+      ${refBox}
       <div class="row"><button type="button" class="btn-ghost sm" data-at="1">Al inicio</button><button type="button" class="btn-ghost sm" data-at="">Al final</button></div>
       <input id="pk-q" value="${esc(pick.q || '')}" placeholder="Antes / después de… (buscar parada de R${pick.to})" autocomplete="off">
       ${found.map(x => posBtns(x)).join('') || (q ? '<div class="hint">Sin resultados.</div>' : '')}
@@ -165,6 +181,11 @@
     b.querySelectorAll('[data-to]').forEach(btn => btn.addEventListener('click', () => { pick.to = btn.dataset.to; render(); }));
     b.querySelectorAll('[data-cancel]').forEach(btn => btn.addEventListener('click', () => { pick = null; render(); }));
     b.querySelectorAll('.picker [data-at]').forEach(btn => btn.addEventListener('click', () => runPick(s, btn.dataset.at === '' ? null : Number(btn.dataset.at))));
+    b.querySelectorAll('[data-clearref]').forEach(btn => btn.addEventListener('click', () => { pick.ref = null; render(); }));
+    b.querySelectorAll('.prow[data-sid]').forEach(row => {
+      row.addEventListener('mouseenter', () => BV.map.highlight(row.dataset.sid));
+      row.addEventListener('mouseleave', () => BV.map.highlight(null));
+    });
     const pq = $('pk-q');
     if (pq) pq.addEventListener('input', e => { pick.q = e.target.value; const pos = e.target.selectionStart; render(); const n = $('pk-q'); n.focus(); n.setSelectionRange(pos, pos); });
     b.querySelectorAll('[data-zone]').forEach(inp => inp.addEventListener('input', () => {
@@ -192,6 +213,21 @@
       current = id; $('drawer').hidden = false; document.body.classList.add('drawer-open');
       status(''); render();
     },
-    close() { current = null; $('drawer').hidden = true; document.body.classList.remove('drawer-open'); }
+    // Clic en un pin del mapa mientras se elige posición: ese pin pasa a ser la referencia.
+    pickRef(id) {
+      if (!pick || !pick.to || !current) return;
+      if (id === current) { BV.toast('Esa es la parada que estás moviendo'); return; }
+      const m = BV.data.membersOf(pick.to).find(x => x.stop_id === id);
+      const st = BV.state.stops.get(id);
+      if (!m || !st) { BV.toast('Esa parada no está en R' + pick.to); return; }
+      pick.ref = { id, name: st.name, position: m.position };
+      render();
+    },
+    // Pasar el mouse por un pin resalta su fila en el selector.
+    hoverRow(id) {
+      document.querySelectorAll('.prow.hl').forEach(r => r.classList.remove('hl'));
+      if (id) document.querySelectorAll('.prow[data-sid="' + id + '"]').forEach(r => r.classList.add('hl'));
+    },
+    close() { pick = null; ctxKey = ''; BV.ui.setPick(null); current = null; $('drawer').hidden = true; document.body.classList.remove('drawer-open'); }
   };
 })();

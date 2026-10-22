@@ -1,9 +1,9 @@
 /* Mapa (Google Maps). Marcadores DOM: círculo con los colores de las rutas visibles; número si hay una sola ruta con orden. */
 (function () {
   const C = window.BV_CONFIG;
-  let map = null, ready = null, selectedId = null;
+  let map = null, ready = null, selectedId = null, hlId = null, wrap = null, tip = null, pickFn = null;
   const markers = new Map();      // stopId -> AdvancedMarkerElement
-  let onSelect = () => {}, onMoved = () => {};
+  let onSelect = () => {}, onMoved = () => {}, onHover = () => {};
 
   function loadScript(key) {
     if (ready) return ready;
@@ -36,13 +36,34 @@
 
   const pos = s => ({ lat: s.lat, lng: s.lng });
 
+  function showTip(el, stop, label) {
+    if (!tip || !wrap) return;
+    const a = el.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+    tip.textContent = (label ? '#' + label + ' · ' : '') + stop.name;
+    tip.style.left = (a.left + a.width / 2 - w.left) + 'px'; tip.style.top = (a.top - w.top) + 'px';
+    tip.hidden = false; onHover(stop.id);
+  }
+  function hideTip() { if (tip) tip.hidden = true; }
+
   BV.map = {
     available() { return !!map; },
     onSelect(fn) { onSelect = fn; },
     onMoved(fn) { onMoved = fn; },
+    onHover(fn) { onHover = fn; },
+    // Con fn, un clic en un pin llama fn(stopId) en vez de abrir la parada (modo "elegir referencia").
+    setPickMode(fn) { pickFn = fn; if (wrap) wrap.classList.toggle('picking', !!fn); },
+    highlight(id) {
+      const prev = markers.get(hlId);
+      if (prev) { prev.content.classList.remove('pin-hl'); prev.zIndex = hlId === selectedId ? 10 : 0; }
+      hlId = id;
+      const m = markers.get(id);
+      if (m && m.map) { m.content.classList.add('pin-hl'); m.zIndex = 20; }
+    },
 
     async init(key, el) {
       await loadScript(key);
+      wrap = el.parentElement;
+      tip = document.createElement('div'); tip.className = 'maptip'; tip.hidden = true; wrap.appendChild(tip);
       map = new google.maps.Map(el, {
         center: C.MAP_CENTER, zoom: C.MAP_ZOOM, mapId: C.MAP_ID,
         streetViewControl: false, fullscreenControl: false, mapTypeControl: false, clickableIcons: false,
@@ -78,7 +99,10 @@
         } else {
           m.content = content; m.position = pos(s); m.map = map;
         }
-        content.addEventListener('click', e => { e.stopPropagation(); onSelect(s.id); });
+        content.addEventListener('click', e => { e.stopPropagation(); pickFn ? pickFn(s.id) : onSelect(s.id); });
+        content.addEventListener('mouseenter', () => showTip(content, s, it.label));
+        content.addEventListener('mouseleave', () => { hideTip(); onHover(null); });
+        if (s.id === hlId) content.classList.add('pin-hl');
       }
       markers.forEach((m, id) => { if (!keep.has(id)) m.map = null; });
     },
