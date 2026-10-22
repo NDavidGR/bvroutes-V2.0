@@ -7,7 +7,8 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } }
   };
-  let visible = new Set(), showInactive = false, query = '', mapKey = null, pickCtx = null;
+  let visible = new Set(), showInactive = false, query = '', mapKey = null, pickCtx = null, lineOn = false;
+  const hidden = new Set();   // paradas apagadas en el mapa (solo vista, no se guarda en la base)
 
   BV.toast = (msg, kind) => {
     const t = $('toast'); t.textContent = msg; t.dataset.kind = kind || ''; t.classList.add('show');
@@ -65,7 +66,8 @@
       const dots = (r.routeIds || []).map(id => `<i style="background:${C.ROUTE_COLORS[id] || '#888'}" title="R${id}"></i>`).join('');
       const canDrag = numbered && !query && !pickCtx;
       const pos = (numbered && !query) ? `<small>${r.position}</small>` : '';
-      return `<li class="${sel}${s.active ? '' : ' off'}" data-id="${s.id}" data-pos="${r.position ?? ''}">${canDrag ? '<b class="grip" title="Arrastra para cambiar la posición">⠿</b>' : ''}${pos}<span>${esc(s.name)}</span>
+      const hid = hidden.has(s.id) ? ' hid' : '';
+      return `<li class="${sel}${s.active ? '' : ' off'}${hid}" data-id="${s.id}" data-pos="${r.position ?? ''}"><b class="eye" data-eye title="${hid ? 'Mostrar en el mapa' : 'Ocultar del mapa'}">${hid ? '◌' : '●'}</b>${canDrag ? '<b class="grip" title="Arrastra para cambiar la posición">⠿</b>' : ''}${pos}<span>${esc(s.name)}</span>
         ${s.note ? '<u title="' + esc(s.note) + '">!</u>' : ''}${s.opens_at ? '<code>' + s.opens_at.slice(0, 5) + '</code>' : ''}<div class="dots">${dots}</div></li>`;
     }).join('') + (total > shown.length ? `<li class="more">… ${total - shown.length} más. Afina la búsqueda.</li>` : '');
   }
@@ -73,8 +75,14 @@
   function refresh() {
     const { items, numbered } = visibleItems();
     renderRoutes(); renderList(items, numbered);
-    BV.map.render(items);
-    $('summary').textContent = items.length + ' paradas en el mapa';
+    const shown = pickCtx ? items : items.filter(i => !hidden.has(i.stop.id));
+    BV.map.render(shown);
+    const single = !pickCtx && numbered && visible.size === 1;
+    BV.map.setLine(single && lineOn ? shown.filter(i => i.position != null).sort((a, b) => a.position - b.position) : null,
+      single ? (C.ROUTE_COLORS[[...visible][0]] || '#555') : null);
+    const nh = items.length - shown.length;
+    $('summary').textContent = shown.length + ' paradas en el mapa' + (nh ? ` · ${nh} ocultas` : '');
+    $('v-line').disabled = !single;
     if (BV.panel.current()) BV.map.select(BV.panel.current());
   }
   // Contexto "estoy eligiendo dónde cae la parada": el mapa muestra solo la ruta destino numerada.
@@ -96,6 +104,7 @@
   };
 
   function select(id, { pan = true } = {}) {
+    if (hidden.delete(id)) refresh();   // si estaba apagada, al abrirla se prende
     document.body.classList.remove('side-open');
     BV.panel.open(id);
     BV.map.select(id);
@@ -163,6 +172,18 @@
       ls.set('bv_visible', [...visible]); refresh();
       if (e.shiftKey === false && visible.size === 1) BV.map.fit(visibleItems().items);
     });
+    $('list').addEventListener('click', e => {
+      const eye = e.target.closest('[data-eye]'); if (!eye) return;
+      e.stopPropagation();
+      const id = eye.closest('li').dataset.id;
+      hidden.has(id) ? hidden.delete(id) : hidden.add(id);
+      refresh();
+    }, true);
+    $('list').addEventListener('mouseover', e => { const li = e.target.closest('li[data-id]'); BV.map.highlight(li ? li.dataset.id : null); });
+    $('list').addEventListener('mouseleave', () => BV.map.highlight(null));
+    $('v-hide').onclick = () => { visibleItems().items.forEach(i => hidden.add(i.stop.id)); refresh(); };
+    $('v-show').onclick = () => { hidden.clear(); refresh(); };
+    $('v-line').addEventListener('change', e => { lineOn = e.target.checked; ls.set('bv_line', lineOn); refresh(); });
     $('r-all').onclick = () => { visible = new Set(BV.state.routes.map(r => r.id)); ls.set('bv_visible', [...visible]); refresh(); };
     $('r-none').onclick = () => { visible = new Set(); ls.set('bv_visible', []); refresh(); };
     $('search').addEventListener('input', e => { query = e.target.value.trim(); refresh(); });
@@ -207,6 +228,7 @@
     }
     const saved = ls.get('bv_visible', null);
     visible = new Set(saved ? saved.filter(r => BV.data.route(r)) : BV.state.routes.map(r => r.id));
+    lineOn = !!ls.get('bv_line', false); $('v-line').checked = lineOn;
     wire(); enableDrag(); BV.history.wire();
     mapKey = ls.get('bvMapsApiKey', null);
     if (mapKey) {

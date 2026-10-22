@@ -1,7 +1,7 @@
 /* Mapa (Google Maps). Marcadores DOM: círculo con los colores de las rutas visibles; número si hay una sola ruta con orden. */
 (function () {
   const C = window.BV_CONFIG;
-  let map = null, ready = null, selectedId = null, hlId = null, wrap = null, tip = null, pickFn = null;
+  let map = null, ready = null, selectedId = null, hlId = null, line = null, wrap = null, tip = null, pickFn = null;
   const markers = new Map();      // stopId -> AdvancedMarkerElement
   let onSelect = () => {}, onMoved = () => {}, onHover = () => {};
 
@@ -52,6 +52,15 @@
     onHover(fn) { onHover = fn; },
     // Con fn, un clic en un pin llama fn(stopId) en vez de abrir la parada (modo "elegir referencia").
     setPickMode(fn) { pickFn = fn; if (wrap) wrap.classList.toggle('picking', !!fn); },
+    // Línea que une las paradas en el orden recibido (items ya ordenados). null = sin línea.
+    setLine(items, color) {
+      if (!map) return;
+      if (line) { line.setMap(null); line = null; }
+      const pts = (items || []).filter(i => i.stop.lat != null).map(i => pos(i.stop));
+      if (pts.length < 2 || !google.maps.Polyline) return;
+      line = new google.maps.Polyline({ path: pts, strokeColor: color, strokeOpacity: 0.85, strokeWeight: 3, map, zIndex: 1,
+        icons: google.maps.SymbolPath ? [{ icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 2.6, strokeColor: color, fillColor: color, fillOpacity: 1 }, offset: '50%', repeat: '90px' }] : [] });
+    },
     highlight(id) {
       const prev = markers.get(hlId);
       if (prev) { prev.content.classList.remove('pin-hl'); prev.zIndex = hlId === selectedId ? 10 : 0; }
