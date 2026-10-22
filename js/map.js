@@ -30,7 +30,7 @@
     d.className = 'pin' + (label ? ' pin-num' : '');
     d.style.background = pinColor(routeIds);
     d.title = stop.name;
-    if (label) d.textContent = label;
+    if (label) { d.textContent = label; d.style.setProperty('--t', window.BV_CONFIG.textOn(window.BV_CONFIG.ROUTE_COLORS[routeIds[0]] || '#888888')); }
     return d;
   }
 

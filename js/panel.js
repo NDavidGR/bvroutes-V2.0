@@ -5,6 +5,7 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const TYPES = [['', 'Sin definir'], ['customer', 'Cliente'], ['vendor', 'Proveedor'], ['freight', 'Carga / forwarder'], ['warehouse', 'Almacén']];
   let current = null, timers = {}, onChange = () => {};
+  let pick = null; // { mode:'add'|'move', from, to, q }
 
   function status(txt, kind) { const e = $('save-status'); if (!e) return; e.textContent = txt; e.dataset.kind = kind || ''; }
 
@@ -31,11 +32,18 @@
     const ms = BV.data.routesOf(s.id);
     const opens = s.opens_at ? s.opens_at.slice(0, 5) : '';
     const openOpt = opens && opens !== '06:00' && opens !== '10:00';
-    const routeBtns = BV.state.routes.map(r => {
-      const m = ms.find(x => x.route_id === r.id);
-      const col = C.ROUTE_COLORS[r.id] || '#888';
-      return `<button type="button" class="rchip ${m ? 'on' : ''}" data-route="${r.id}" style="--c:${col}">R${r.id}${m && m.position ? `<small>#${m.position}</small>` : ''}</button>`;
-    }).join('');
+    const chipCol = id => { const col = C.ROUTE_COLORS[id] || '#888'; return `--c:${col};--t:${C.textOn(col)}`; };
+    const inRows = ms.sort((x, y) => Number(x.route_id) - Number(y.route_id)).map(m => `
+      <div class="inrow" style="${chipCol(m.route_id)}">
+        <b class="tag">R${m.route_id}</b>
+        <span class="muted">${m.position ? 'posición ' + m.position : (m.zone || 'sin orden')}</span>
+        <span class="spacer"></span>
+        <button type="button" class="btn-ghost sm" data-move="${m.route_id}">Mover…</button>
+        <button type="button" class="btn-ghost sm" data-remove="${m.route_id}">Quitar</button>
+      </div>`).join('') || '<div class="muted">No está en ninguna ruta.</div>';
+    const addChips = BV.state.routes.filter(r => !ms.some(m => m.route_id === r.id)).map(r =>
+      `<button type="button" class="rchip" data-add="${r.id}" style="${chipCol(r.id)}">+ R${r.id}</button>`).join('');
+    const pickerHtml = pick ? pickerMarkup(s) : '';
     const zoneRows = ms.filter(m => !BV.data.route(m.route_id).ordered).map(m =>
       `<label class="fld"><span>Zona en R${m.route_id}</span><input data-zone="${m.route_id}" value="${esc(m.zone || '')}" placeholder="Downtown, Brickell, Kendall…"></label>`).join('');
     const lat = s.lat != null ? s.lat.toFixed(6) : '—', lng = s.lng != null ? s.lng.toFixed(6) : '—';
@@ -56,7 +64,9 @@
 
       <label class="fld"><span>Nota</span><input id="f-note" value="${esc(s.note)}" placeholder="No early, from 6, 1st stop…"></label>
 
-      <div class="fld"><span>Rutas</span><div class="rchips">${routeBtns}</div></div>
+      <div class="fld"><span>Está en</span>${inRows}</div>
+      ${pickerHtml}
+      ${addChips ? `<div class="fld"><span>Agregar también a</span><div class="rchips">${addChips}</div></div>` : ''}
       ${zoneRows}
 
       <div class="fld"><span>Coordenadas <em>${lat}, ${lng}</em></span>
@@ -80,6 +90,50 @@
     bind(s);
   }
 
+  function posBtns(stopRow, label) {
+    return `<div class="prow"><span class="pname">${esc(stopRow.stop.name)} <small class="muted">#${stopRow.position}${stopRow.miles != null ? ' · ' + stopRow.miles.toFixed(1) + ' mi' : ''}</small></span>
+      <button type="button" class="btn-ghost sm" data-at="${stopRow.position}" title="Antes de esta parada">↑ antes</button>
+      <button type="button" class="btn-ghost sm" data-at="${stopRow.position + 1}" title="Después de esta parada">↓ después</button></div>`;
+  }
+
+  function pickerMarkup(s) {
+    const verb = pick.mode === 'move' ? 'Mover' : 'Agregar';
+    if (!pick.to) {
+      const opts = BV.state.routes.filter(r => r.id !== pick.from && !BV.data.routesOf(s.id).some(m => m.route_id === r.id));
+      return `<div class="picker"><div class="picker-h"><b>${verb} a qué ruta</b><button type="button" class="lnk" data-cancel>Cancelar</button></div>
+        <div class="rchips">${opts.map(r => `<button type="button" class="rchip" data-to="${r.id}" style="--c:${C.ROUTE_COLORS[r.id] || '#888'};--t:${C.textOn(C.ROUTE_COLORS[r.id] || '#888888')}">R${r.id}</button>`).join('')}</div></div>`;
+    }
+    const r = BV.data.route(pick.to);
+    const head = `<div class="picker-h"><b>${verb} ${pick.mode === 'move' ? 'de R' + pick.from + ' ' : ''}a R${pick.to}</b><button type="button" class="lnk" data-cancel>Cancelar</button></div>`;
+    if (!r.ordered) {
+      return `<div class="picker">${head}<div class="hint">R${pick.to} no tiene orden: solo se agrega.</div>
+        <input id="pk-zone" placeholder="Zona (opcional): Downtown, Brickell…"><button type="button" class="btn" data-at="">Confirmar</button></div>`;
+    }
+    const q = (pick.q || '').trim().toUpperCase();
+    const near = BV.data.nearest(pick.to, s.lat, s.lng, s.id, 4);
+    const found = q ? BV.data.membersOf(pick.to).map(m => ({ stop: BV.state.stops.get(m.stop_id), position: m.position }))
+      .filter(x => x.stop && x.stop.name.toUpperCase().includes(q)).slice(0, 6) : [];
+    return `<div class="picker">${head}
+      <div class="row"><button type="button" class="btn-ghost sm" data-at="1">Al inicio</button><button type="button" class="btn-ghost sm" data-at="">Al final</button></div>
+      <input id="pk-q" value="${esc(pick.q || '')}" placeholder="Antes / después de… (buscar parada de R${pick.to})" autocomplete="off">
+      ${found.map(x => posBtns(x)).join('') || (q ? '<div class="hint">Sin resultados.</div>' : '')}
+      ${near.length ? `<div class="hint">Más cercanas a esta parada en R${pick.to}:</div>${near.map(x => posBtns(x)).join('')}` : (s.lat == null ? '<div class="hint">Esta parada no tiene coordenadas, no se puede sugerir por cercanía.</div>' : '')}
+    </div>`;
+  }
+
+  async function runPick(s, pos) {
+    const to = pick.to, from = pick.from, mode = pick.mode;
+    const zoneEl = $('pk-zone'), zone = zoneEl ? (zoneEl.value.trim() || null) : null;
+    try {
+      status('Guardando…');
+      if (mode === 'move') await BV.data.moveStop(s.id, from, to, pos);
+      else await BV.data.addToRoute(s.id, to, pos, zone);
+      const m = BV.data.routesOf(s.id).find(x => x.route_id === to);
+      BV.toast(mode === 'move' ? `Movida a R${to}${m && m.position ? ' · posición ' + m.position : ''}` : `Agregada a R${to}${m && m.position ? ' · posición ' + m.position : ''}`);
+      status('Guardado ✓', 'ok'); pick = null; render(); onChange(s.id);
+    } catch (e) { status('Error al guardar', 'err'); BV.toast('No se guardó: ' + (e.message || e), 'err'); }
+  }
+
   function bind(s) {
     const b = $('drawer-body');
     $('f-name').addEventListener('input', e => { if (e.target.value.trim()) save({ name: e.target.value.trim() }); });
@@ -101,15 +155,18 @@
       save({ lat, lng, coord_source: 'manual' }, { immediate: true });
       BV.map.setPosition(s.id, lat, lng); BV.map.panTo({ lat, lng }); setTimeout(render, 300);
     });
-    b.querySelectorAll('[data-route]').forEach(btn => btn.addEventListener('click', async () => {
-      const r = btn.dataset.route, has = BV.data.routesOf(s.id).some(m => m.route_id === r);
-      try {
-        status('Guardando…');
-        if (has) { await BV.data.removeFromRoute(s.id, r); BV.toast(`Quitada de la ruta ${r}`); }
-        else { await BV.data.addToRoute(s.id, r); BV.toast(`Agregada al final de la ruta ${r}`); }
-        status('Guardado ✓', 'ok'); render(); onChange(s.id);
-      } catch (e) { status('Error al guardar', 'err'); BV.toast('No se guardó: ' + e.message, 'err'); }
+    b.querySelectorAll('[data-add]').forEach(btn => btn.addEventListener('click', () => { pick = { mode: 'add', from: null, to: btn.dataset.add, q: '' }; render(); }));
+    b.querySelectorAll('[data-move]').forEach(btn => btn.addEventListener('click', () => { pick = { mode: 'move', from: btn.dataset.move, to: null, q: '' }; render(); }));
+    b.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', async () => {
+      const r = btn.dataset.remove;
+      try { status('Guardando…'); await BV.data.removeFromRoute(s.id, r); BV.toast(`Quitada de la ruta ${r}`); status('Guardado ✓', 'ok'); pick = null; render(); onChange(s.id); }
+      catch (e) { status('Error al guardar', 'err'); BV.toast('No se guardó: ' + (e.message || e), 'err'); }
     }));
+    b.querySelectorAll('[data-to]').forEach(btn => btn.addEventListener('click', () => { pick.to = btn.dataset.to; render(); }));
+    b.querySelectorAll('[data-cancel]').forEach(btn => btn.addEventListener('click', () => { pick = null; render(); }));
+    b.querySelectorAll('.picker [data-at]').forEach(btn => btn.addEventListener('click', () => runPick(s, btn.dataset.at === '' ? null : Number(btn.dataset.at))));
+    const pq = $('pk-q');
+    if (pq) pq.addEventListener('input', e => { pick.q = e.target.value; const pos = e.target.selectionStart; render(); const n = $('pk-q'); n.focus(); n.setSelectionRange(pos, pos); });
     b.querySelectorAll('[data-zone]').forEach(inp => inp.addEventListener('input', () => {
       const r = inp.dataset.zone, z = inp.value.trim() || null;
       clearTimeout(timers['z' + r]);
@@ -131,6 +188,7 @@
     onChange(fn) { onChange = fn; },
     current() { return current; },
     open(id) {
+      if (current !== id) pick = null;
       current = id; $('drawer').hidden = false; document.body.classList.add('drawer-open');
       status(''); render();
     },

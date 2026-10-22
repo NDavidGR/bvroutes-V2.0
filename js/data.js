@@ -60,21 +60,41 @@
       return data;
     },
 
-    async addToRoute(stopId, routeId) {
-      const route = BV.data.route(routeId);
-      const ms = BV.data.membersOf(routeId);
-      const position = route.ordered ? (Math.max(0, ...ms.map(m => m.position || 0)) + 1) : null;
-      const row = { route_id: routeId, stop_id: stopId, position, zone: null };
-      const { error } = await sb.from('route_stops').insert(row);
+    // Recarga solo las membresías (las posiciones de otras paradas cambian al insertar/quitar).
+    async reloadMembers() {
+      state.members = await fetchAll('route_stops', ['route_id', 'stop_id']);
+    },
+
+    // pos = posición deseada (1 = al inicio); null = al final. En rutas sin orden se ignora.
+    async addToRoute(stopId, routeId, pos = null, zone = null) {
+      const { error } = await sb.rpc('add_stop_to_route', { p_stop: stopId, p_route: routeId, p_pos: pos, p_zone: zone });
       if (error) throw error;
-      state.members.push(row);
-      return row;
+      await BV.data.reloadMembers();
     },
 
     async removeFromRoute(stopId, routeId) {
-      const { error } = await sb.from('route_stops').delete().eq('stop_id', stopId).eq('route_id', routeId);
+      const { error } = await sb.rpc('remove_stop_from_route', { p_stop: stopId, p_route: routeId });
       if (error) throw error;
-      state.members = state.members.filter(m => !(m.stop_id === stopId && m.route_id === routeId));
+      await BV.data.reloadMembers();
+    },
+
+    async moveStop(stopId, fromRoute, toRoute, pos = null) {
+      const { error } = await sb.rpc('move_stop', { p_stop: stopId, p_from: fromRoute, p_to: toRoute, p_pos: pos });
+      if (error) throw error;
+      await BV.data.reloadMembers();
+    },
+
+    // Paradas de una ruta ordenadas por cercanía a un punto (millas).
+    nearest(routeId, lat, lng, excludeId, n = 4) {
+      if (lat == null || lng == null) return [];
+      const R = 3958.8, rad = x => x * Math.PI / 180;
+      return BV.data.membersOf(routeId).filter(m => m.stop_id !== excludeId).map(m => {
+        const st = state.stops.get(m.stop_id);
+        if (!st || st.lat == null || !st.active) return null;
+        const dLat = rad(st.lat - lat), dLng = rad(st.lng - lng);
+        const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat)) * Math.cos(rad(st.lat)) * Math.sin(dLng / 2) ** 2;
+        return { stop: st, position: m.position, miles: 2 * R * Math.asin(Math.sqrt(h)) };
+      }).filter(Boolean).sort((a, b) => a.miles - b.miles).slice(0, n);
     },
 
     async setZone(stopId, routeId, zone) {
