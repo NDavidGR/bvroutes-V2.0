@@ -195,6 +195,8 @@
     const taken = new Set($('pp-input').value.split('\n').map(norm).filter(Boolean)); taken.delete(x);
     const idx = buildIndex();
     const mine = acCore(idx.filter(e => e.inRoute), x, taken), others = acCore(idx.filter(e => !e.inRoute), x, taken);
+    const ex = idx.find(e => e.inRoute && e.keys.includes(x));                      // ya escribió una parada de esta ruta tal cual
+    if (ex) mine.unshift({ exact: true, stop: ex.stop, inRoute: true, pos: posOf(ex.stop.id) });
     if (acAll) return mine.concat(others).slice(0, 10);
     return others.length ? mine.concat([{ more: others.length }]) : mine;
   }
@@ -205,6 +207,7 @@
     if (!acList.length) { acClose(); return; }
     const q = ln.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     box.innerHTML = acList.map((r, i) => {
+      if (r.exact) return `<div class="ac-i ac-ok" data-i="${i}">✓ ${esc(r.stop.name)} <span class="ac-r">en la ruta ${esc(route)}${r.pos ? ' · #' + r.pos : ''}</span></div>`;
       if (r.more) return `<div class="ac-i ac-more" data-i="${i}">${acList.length === 1 ? `Nada en la ruta ${esc(route)}. ` : ''}Ver ${r.more} de otras rutas ▸</div>`;
       const nm = esc(r.stop.name).replace(new RegExp('(' + esc(q) + ')', 'ig'), '<mark>$1</mark>');
       const rs = r.inRoute ? '' : BV.data.routesOf(r.stop.id).map(m => `<b class="tag" style="${tagCol(m.route_id)}">R${esc(m.route_id)}</b>`).join(' ');
@@ -215,6 +218,7 @@
     box.hidden = false;
   }
   function acPick(i) {
+    if (acList[i].exact) { acClose(); return; }
     if (acList[i].more) { acAll = true; acOpen(); $('pp-input').focus(); return; }
     const ta = $('pp-input'), ln = acLine(ta), name = acList[i].stop.name;
     ta.value = ta.value.substring(0, ln.start) + name + ta.value.substring(ln.end);
