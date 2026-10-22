@@ -35,7 +35,7 @@
     const entries = [];
     BV.state.stops.forEach(s => {
       if (!s.active) return;
-      const keys = new Set([norm(s.name), ...(s.legacy_names || []).map(norm)]); keys.delete('');
+      const keys = new Set([norm(s.name), norm(s.name_key), ...(s.legacy_names || []).map(norm)]);   // name_key = nombre sin el "(2)" de las homónimas keys.delete('');
       entries.push({ stop: s, keys: [...keys], inRoute: inRoute.has(s.id) });
     });
     return entries;
