@@ -41,7 +41,7 @@ body.drawer-open #app{grid-template-columns:310px 1fr 360px;grid-template-areas:
 #side{grid-area:side;display:flex;flex-direction:column;min-height:0;background:var(--card);border-right:1px solid var(--line)}
 #mapwrap{grid-area:map;position:relative;min-width:0}
 #map{position:absolute;inset:0}
-#drawer{grid-area:drawer;background:var(--card);border-left:1px solid var(--line);overflow:auto;min-height:0}
+#drawer,#plan{grid-area:drawer;background:var(--card);border-left:1px solid var(--line);overflow:auto;min-height:0}
 .only-mobile{display:none}
 
 /* camiones */
@@ -179,3 +179,27 @@ dialog.wide[open]{display:flex}
 #list li.hid{opacity:.45} #list li.hid .eye{color:var(--muted)}
 #list li.hid span{text-decoration:none}
 @media (max-width:900px){.eye{width:36px;height:36px;font-size:16px}}
+
+/* plan del día */
+body.plan-open #app{grid-template-columns:310px 1fr 420px;grid-template-areas:"top top top" "side map drawer"}
+#plan{background:var(--card);border-left:1px solid var(--line);overflow:auto;min-height:0}
+.plan-body{padding:14px;display:grid;gap:10px;align-content:start}
+.plan-body input[type=date],.plan-body select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.plan-body textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+.plan-out{list-style:none;margin:0;padding:0;display:grid}
+.plan-out li{display:grid;grid-template-columns:auto 30px 1fr auto;gap:8px;align-items:start;padding:8px 0;border-bottom:1px solid var(--line)}
+.plan-out li.dragging{opacity:.4} .plan-out li.drop-before{box-shadow:inset 0 3px 0 var(--amber)} .plan-out li.drop-after{box-shadow:inset 0 -3px 0 var(--amber)}
+.plan-out .n{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right;padding-top:2px}
+.plan-out .nm{min-width:0;display:grid;gap:4px;cursor:pointer}
+.plan-out .nm b{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.plan-out .sub{font-size:12px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.plan-out .tag{background:var(--c);color:var(--t);border-radius:5px;padding:1px 6px;font-size:11px;font-weight:700}
+.plan-out li.st-other .nm b::after{content:" ·otra ruta";color:var(--amber);font-weight:400;font-size:11px}
+.plan-out li.st-unk .nm b{color:var(--err)}
+.plan-out .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.plan-out .sug{display:flex;gap:4px;flex-wrap:wrap}
+.planbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:5;display:flex;gap:12px;align-items:center;background:#1b1c1e;color:#ebecee;border:1px solid var(--amber);border-radius:999px;padding:6px 14px;font-size:13px;box-shadow:0 2px 10px #0006}
+@media (max-width:900px){
+  #plan{position:fixed;left:0;right:0;bottom:0;max-height:80dvh;border-radius:16px 16px 0 0;border:1px solid var(--line);box-shadow:0 -8px 30px #0004;z-index:30}
+  body.plan-open #app{grid-template-columns:1fr;grid-template-rows:52px 1fr;grid-template-areas:"top" "map"}
+}

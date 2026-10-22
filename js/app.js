@@ -7,7 +7,7 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } }
   };
-  let visible = new Set(), showInactive = false, query = '', mapKey = null, pickCtx = null, lineOn = false;
+  let visible = new Set(), showInactive = false, query = '', mapKey = null, pickCtx = null, planCtx = null, lineOn = false;
   const hidden = new Set();   // paradas apagadas en el mapa (solo vista, no se guarda en la base)
 
   BV.toast = (msg, kind) => {
@@ -17,6 +17,13 @@
 
   /* ---------- qué se ve ---------- */
   function visibleItems() {
+    if (planCtx && !pickCtx) {   // plan del día: solo sus paradas, numeradas en el orden del día
+      const its = planCtx.items.map(it => {
+        const rs = BV.data.routesOf(it.stop.id).map(m => m.route_id);
+        return { stop: it.stop, routeIds: rs.length ? rs : [planCtx.route], label: it.label, position: it.label };
+      });
+      return { items: its, numbered: true };
+    }
     const items = [];
     const vis = pickCtx ? new Set([pickCtx.to]) : visible;   // eligiendo posición: solo la ruta destino
     const single = vis.size === 1 ? BV.data.route([...vis][0]) : null;
@@ -59,12 +66,12 @@
       rows.sort((a, b) => numbered ? (a.position - b.position) : a.stop.name.localeCompare(b.stop.name));
     }
     const total = rows.length, shown = rows.slice(0, 300);
-    $('list').dataset.route = (numbered && !query && !pickCtx) ? [...visible][0] : '';
+    $('list').dataset.route = (numbered && !query && !pickCtx && !planCtx) ? [...visible][0] : '';
     $('count').textContent = (query ? 'Resultados: ' : 'Visibles: ') + total;
     $('list').innerHTML = shown.map(r => {
       const s = r.stop, sel = s.id === BV.panel.current() ? ' sel' : '';
       const dots = (r.routeIds || []).map(id => `<i style="background:${C.ROUTE_COLORS[id] || '#888'}" title="R${id}"></i>`).join('');
-      const canDrag = numbered && !query && !pickCtx;
+      const canDrag = numbered && !query && !pickCtx && !planCtx;
       const pos = (numbered && !query) ? `<small>${r.position}</small>` : '';
       const hid = hidden.has(s.id) ? ' hid' : '';
       return `<li class="${sel}${s.active ? '' : ' off'}${hid}" data-id="${s.id}" data-pos="${r.position ?? ''}"><b class="eye" data-eye title="${hid ? 'Mostrar en el mapa' : 'Ocultar del mapa'}">${hid ? '◌' : '●'}</b>${canDrag ? '<b class="grip" title="Arrastra para cambiar la posición">⠿</b>' : ''}${pos}<span>${esc(s.name)}</span>
@@ -75,13 +82,14 @@
   function refresh() {
     const { items, numbered } = visibleItems();
     renderRoutes(); renderList(items, numbered);
-    const shown = pickCtx ? items : items.filter(i => !hidden.has(i.stop.id));
+    const shown = (pickCtx || planCtx) ? items : items.filter(i => !hidden.has(i.stop.id));
     BV.map.render(shown);
-    const single = !pickCtx && numbered && visible.size === 1;
+    const single = !pickCtx && numbered && (planCtx || visible.size === 1);
+    const lineRoute = planCtx ? planCtx.route : [...visible][0];
     BV.map.setLine(single && lineOn ? shown.filter(i => i.position != null).sort((a, b) => a.position - b.position) : null,
-      single ? (C.ROUTE_COLORS[[...visible][0]] || '#555') : null);
+      single ? (C.ROUTE_COLORS[lineRoute] || '#555') : null);
     const nh = items.length - shown.length;
-    $('summary').textContent = shown.length + ' paradas en el mapa' + (nh ? ` · ${nh} ocultas` : '');
+    $('summary').textContent = (planCtx && !pickCtx ? shown.length + ' paradas del plan' : shown.length + ' paradas en el mapa') + (nh ? ` · ${nh} ocultas` : '');
     $('v-line').disabled = !single;
     if (BV.panel.current()) BV.map.select(BV.panel.current());
   }
@@ -89,6 +97,13 @@
   BV.ui = {
     refresh,
     selectStop(id) { select(id); },
+    // Plan del día en el mapa. ctx = { route, items:[{stop,label}] } o null. fit = encuadrar el mapa.
+    setPlan(ctx, fit) {
+      planCtx = ctx; refresh();
+      $('planbar').hidden = !ctx;
+      if (ctx) $('planbar-txt').textContent = `Plan R${ctx.route} · ${ctx.items.length} paradas`;
+      if (ctx && fit && BV.map.available() && ctx.items.length) BV.map.fit(ctx.items);
+    },
     setPick(ctx) {
       const key = ctx ? ctx.stopId + '>' + ctx.to : '';
       if (key === (pickCtx ? pickCtx.stopId + '>' + pickCtx.to : '')) return;
@@ -229,7 +244,7 @@
     const saved = ls.get('bv_visible', null);
     visible = new Set(saved ? saved.filter(r => BV.data.route(r)) : BV.state.routes.map(r => r.id));
     lineOn = !!ls.get('bv_line', false); $('v-line').checked = lineOn;
-    wire(); enableDrag(); BV.history.wire();
+    wire(); enableDrag(); BV.history.wire(); BV.plan.wire();
     mapKey = ls.get('bvMapsApiKey', null);
     if (mapKey) {
       try { await BV.map.init(mapKey, $('map')); $('nomap').hidden = true; }

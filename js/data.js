@@ -99,6 +99,16 @@
       return data;
     },
 
+    async loadPlan(date, routeId) {
+      const { data, error } = await sb.from('day_plans').select('*').eq('plan_date', date).eq('route_id', routeId).limit(1);
+      if (error) throw error;
+      return (data && data[0]) || null;
+    },
+    async savePlan(row) {
+      const { error } = await sb.from('day_plans').upsert(row, { onConflict: 'plan_date,route_id' });
+      if (error) throw error;
+    },
+
     // Paradas de una ruta ordenadas por cercanía a un punto (millas).
     nearest(routeId, lat, lng, excludeId, n = 4) {
       if (lat == null || lng == null) return [];

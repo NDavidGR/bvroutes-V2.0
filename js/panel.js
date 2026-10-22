@@ -209,6 +209,7 @@
     onChange(fn) { onChange = fn; },
     current() { return current; },
     open(id) {
+      if (BV.plan) BV.plan.hide();
       if (current !== id) pick = null;
       current = id; $('drawer').hidden = false; document.body.classList.add('drawer-open');
       status(''); render();

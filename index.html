@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BV Rutas 2.0</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231b1c1e'/%3E%3Ctext x='16' y='22' font-size='16' text-anchor='middle' fill='%23FFC107' font-family='sans-serif' font-weight='700'%3EBV%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/styles.css?v=6">
+<link rel="stylesheet" href="css/styles.css?v=7">
 </head>
 <body>
 
@@ -27,6 +27,7 @@
     <div class="spacer"></div>
     <label class="chk"><input type="checkbox" id="inactive"> Ver inactivas</label>
     <button id="btn-new" class="btn">+ Nueva parada</button>
+    <button id="btn-plan" class="btn-ghost">Plan del día</button>
     <button id="btn-hist" class="btn-ghost">Historial</button>
     <button id="btn-key" class="btn-ghost" title="Llave de Google Maps">Mapa</button>
     <button id="btn-out" class="btn-ghost">Salir</button>
@@ -49,6 +50,7 @@
 
   <main id="mapwrap">
     <div id="map"></div>
+    <div id="planbar" class="planbar" hidden><span id="planbar-txt"></span><button id="planbar-exit" class="lnk">Salir del plan</button></div>
     <div id="nomap" class="nomap" hidden>
       <form id="mapkey-form">
         <h2>Llave de Google Maps</h2>
@@ -62,6 +64,17 @@
       <code>insert into editors select id from auth.users where email = 'TU_CORREO';</code></div>
     </div>
   </main>
+
+  <aside id="plan" hidden>
+    <div class="drawer-head"><h2>Plan del día</h2><span id="plan-status" class="muted small"></span><button id="plan-close" class="icon" aria-label="Cerrar">✕</button></div>
+    <div class="plan-body">
+      <div class="row"><input type="date" id="plan-date"><select id="plan-route"></select></div>
+      <textarea id="plan-input" rows="7" placeholder="Pega aquí las paradas del día, una por línea…" spellcheck="false"></textarea>
+      <div class="row"><button id="plan-go" class="btn">ORGANIZE</button><button id="plan-copy" class="btn-ghost">Copiar</button><button id="plan-clear" class="btn-ghost">Limpiar</button></div>
+      <div id="plan-summary" class="muted small"></div>
+      <ol id="plan-out" class="plan-out"></ol>
+    </div>
+  </aside>
 
   <aside id="drawer" hidden>
     <div class="drawer-head"><h2 id="drawer-title"></h2><span id="save-status" class="muted small"></span><button id="drawer-close" class="icon" aria-label="Cerrar">✕</button></div>
@@ -92,12 +105,13 @@
 <div id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
-<script src="js/config.js?v=6"></script>
-<script src="js/auth.js?v=6"></script>
-<script src="js/data.js?v=6"></script>
-<script src="js/map.js?v=6"></script>
-<script src="js/panel.js?v=6"></script>
-<script src="js/history.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
+<script src="js/config.js?v=7"></script>
+<script src="js/auth.js?v=7"></script>
+<script src="js/data.js?v=7"></script>
+<script src="js/map.js?v=7"></script>
+<script src="js/panel.js?v=7"></script>
+<script src="js/history.js?v=7"></script>
+<script src="js/plan.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
 </body>
 </html>
