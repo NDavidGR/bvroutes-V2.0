@@ -193,7 +193,6 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && BV.panel.current()) $('drawer-close').click(); });
     $('btn-menu').onclick = () => document.body.classList.toggle('side-open');
     $('btn-out').onclick = async () => { await BV.auth.logout(); location.reload(); };
-    $('btn-key').onclick = () => { $('nomap').hidden = false; $('mapkey').value = mapKey || ''; };
     $('btn-new').onclick = () => { $('new-name').value = ''; $('new-routes').innerHTML = BV.state.routes.map(r =>
       `<label class="rchip" style="--c:${C.ROUTE_COLORS[r.id]};--t:${C.textOn(C.ROUTE_COLORS[r.id])}"><input type="checkbox" value="${r.id}"><span>R${r.id}</span></label>`).join(''); $('dlg-new').showModal(); $('new-name').focus(); };
     $('new-cancel').onclick = () => $('dlg-new').close();

@@ -168,14 +168,44 @@
       toast(`${s.name} agregada a R${route}` + (a ? ` después de ${a.stop.name}` : '')); render(); save(route);
     } catch (e) { toast('No se agregó: ' + (e.message || e), 'err'); }
   }
-  async function create(i) {
-    const p = cur(), l = p.lines[i];
-    try {
-      const s = await BV.data.createStop(l.raw, [route], C.MAP_CENTER.lat, C.MAP_CENTER.lng);
-      l.stop_id = s.id; l.status = 'route';
-      toast('Parada creada sin ubicación real: ponle sus coordenadas en la app de Rutas.'); render(); save(route);
-    } catch (e) { toast('No se creó: ' + (e.message || e), 'err'); }
+  // Coordenadas desde "lat, lng" o desde un enlace de Google Maps (@lat,lng o !3dlat!4dlng).
+  function parseCoords(txt) {
+    const t = String(txt || '');
+    const m = t.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) || t.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/) || t.match(/(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)/);
+    if (!m) return null;
+    const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+    return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
   }
+  let creating = null;
+  function create(i) {
+    creating = i; const l = cur().lines[i];
+    $('nw-name').value = l.raw; $('nw-coords').value = ''; $('nw-hint').textContent = 'Sin coordenadas la parada no aparece en el mapa.';
+    $('dlg-new').showModal(); $('nw-coords').focus();
+  }
+  function previewCoords() {
+    const c = parseCoords($('nw-coords').value), h = $('nw-hint');
+    if (!$('nw-coords').value.trim()) { h.textContent = 'Sin coordenadas la parada no aparece en el mapa.'; return; }
+    if (!c) { h.textContent = 'No entiendo esas coordenadas. Formato: lat, lng'; return; }
+    const a = isOrdered() ? BV.data.nearest(route, c.lat, c.lng, null, 1)[0] : null;
+    h.textContent = a ? `Quedaría después de ${a.stop.name} #${a.position} (a ${a.miles.toFixed(1)} mi).` : 'Coordenadas válidas.';
+  }
+  async function confirmCreate(e) {
+    e.preventDefault();
+    const p = cur(), l = p.lines[creating], name = $('nw-name').value.trim();
+    if (!name) return;
+    const raw = $('nw-coords').value.trim(), c = parseCoords(raw);
+    if (raw && !c) { toast('Coordenadas no válidas', 'err'); return; }
+    try {
+      const s = await BV.data.createStop(name, [], c ? c.lat : null, c ? c.lng : null);
+      const a = c && isOrdered() ? BV.data.nearest(route, c.lat, c.lng, s.id, 1)[0] : null;
+      await BV.data.addToRoute(s.id, route, a ? a.position + 1 : null);
+      l.stop_id = s.id; l.status = statusOf(s.id); l.raw = l.raw;
+      $('dlg-new').close();
+      toast(`${name} creada` + (a ? ` en R${route}, después de ${a.stop.name}` : ` en R${route}` + (c ? '' : ' (sin ubicación)')));
+      render(); save(route);
+    } catch (err) { toast('No se creó: ' + (err.message || err), 'err'); }
+  }
+
   function resolveAs(i, sid) {
     const p = cur(), l = p.lines[i];
     if (p.lines.some((x, j) => j !== i && x.stop_id === sid)) { toast('Esa parada ya está en el plan', 'err'); return; }
@@ -219,7 +249,7 @@
     $('dlg-map').showModal();
     const msg = $('pm-msg'); msg.hidden = true;
     const key = ls.get('bvMapsApiKey', null);
-    if (!key) { msg.hidden = false; msg.textContent = 'Falta la llave de Google Maps. Pégala una vez en la app de Rutas (botón "Mapa") y vuelve aquí.'; return; }
+    if (!key) { msg.hidden = false; msg.textContent = 'Falta la llave de Google Maps. Ábrela primero en la app de Rutas (te la pide ahí) y vuelve aquí.'; return; }
     try {
       if (!mapReady) { await BV.map.init(key, $('pmap')); mapReady = true; }
       BV.map.render(items);
@@ -253,6 +283,9 @@
       else if (t.dataset.is != null) resolveAs(Number(t.dataset.is), t.dataset.sid);
       else if (t.dataset.del != null) { cur().lines.splice(Number(t.dataset.del), 1); render(); save(route); }
     });
+    $('nw-coords').addEventListener('input', previewCoords);
+    $('form-new').addEventListener('submit', confirmCreate);
+    $('nw-cancel').onclick = () => $('dlg-new').close();
     enableDrag();
   }
 

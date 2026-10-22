@@ -52,7 +52,7 @@
 
     async createStop(name, routeIds, lat, lng) {
       const row = { name: name.trim(), name_key: name.toUpperCase().replace(/[^A-Z0-9\s]/g, '').replace(/\s+/g, ' ').trim(),
-                    lat, lng, coord_source: 'manual' };
+                    lat, lng, coord_source: lat == null ? null : 'manual' };
       const { data, error } = await sb.from('stops').insert(row).select().single();
       if (error) throw error;
       state.stops.set(data.id, data);
