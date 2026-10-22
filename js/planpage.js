@@ -165,29 +165,38 @@
     const v = ta.value, pos = ta.selectionStart, start = v.lastIndexOf('\n', pos - 1) + 1; let end = v.indexOf('\n', pos); if (end === -1) end = v.length;
     return { text: v.substring(start, end).trim(), start, end, index: v.substring(0, start).split('\n').length - 1 };
   };
-  function acSuggest(query) {
-    const x = norm(query); if (x.length < 2) return [];
-    const taken = new Set($('pp-input').value.split('\n').map(norm).filter(Boolean)); taken.delete(x);
-    const idx = buildIndex(), out = [];
+  // Solo sugiere paradas de la ruta que se está armando. Las de otros camiones aparecen únicamente si se piden (acAll).
+  let acAll = false, acLast = '';
+  function acCore(idx, x, taken) {
+    const out = [];
     idx.forEach(e => {
       if (e.keys.includes(x) || e.keys.some(k => taken.has(k))) return;         // ya escrita o es justo lo que escribió
       let sc = 9;
       e.keys.forEach(k => { if (k.startsWith(x)) sc = Math.min(sc, 0); else if (k.includes(x)) sc = Math.min(sc, 1); });
       if (sc < 9) out.push({ stop: e.stop, inRoute: e.inRoute, sc });
     });
-    out.sort((a, b) => a.sc - b.sc || (b.inRoute - a.inRoute) || a.stop.name.localeCompare(b.stop.name));
+    out.sort((a, b) => a.sc - b.sc || a.stop.name.localeCompare(b.stop.name));
     let res = out.slice(0, 8);
     if (res.length < 6 && x.length >= 3) {                                        // errores de tipeo
       const have = new Set(res.map(r => r.stop.id)), fz = [];
       idx.forEach(e => {
         if (have.has(e.stop.id) || e.keys.includes(x) || e.keys.some(k => taken.has(k))) return;
         let d = 0; e.keys.forEach(k => { d = Math.max(d, dice(x, k)); });
-        if (d >= 0.5) fz.push({ stop: e.stop, inRoute: e.inRoute, sc: 2, d: d + (e.inRoute ? 0.03 : 0) });
+        if (d >= 0.5) fz.push({ stop: e.stop, inRoute: e.inRoute, sc: 2, d });
       });
       fz.sort((a, b) => b.d - a.d);
       res = res.concat(fz.slice(0, 8 - res.length));
     }
     return res;
+  }
+  function acSuggest(query) {
+    const x = norm(query); if (x.length < 2) return [];
+    if (x !== acLast) { acAll = false; acLast = x; }
+    const taken = new Set($('pp-input').value.split('\n').map(norm).filter(Boolean)); taken.delete(x);
+    const idx = buildIndex();
+    const mine = acCore(idx.filter(e => e.inRoute), x, taken), others = acCore(idx.filter(e => !e.inRoute), x, taken);
+    if (acAll) return mine.concat(others).slice(0, 10);
+    return others.length ? mine.concat([{ more: others.length }]) : mine;
   }
   function acClose() { $('pp-ac').hidden = true; acList = []; acSel = -1; }
   function acOpen() {
@@ -196,6 +205,7 @@
     if (!acList.length) { acClose(); return; }
     const q = ln.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     box.innerHTML = acList.map((r, i) => {
+      if (r.more) return `<div class="ac-i ac-more" data-i="${i}">${acList.length === 1 ? `Nada en la ruta ${esc(route)}. ` : ''}Ver ${r.more} de otras rutas ▸</div>`;
       const nm = esc(r.stop.name).replace(new RegExp('(' + esc(q) + ')', 'ig'), '<mark>$1</mark>');
       const rs = r.inRoute ? '' : BV.data.routesOf(r.stop.id).map(m => `<b class="tag" style="${tagCol(m.route_id)}">R${esc(m.route_id)}</b>`).join(' ');
       return `<div class="ac-i" data-i="${i}">${nm}${rs ? ` <span class="ac-r">${rs}</span>` : ''}</div>`;
@@ -205,6 +215,7 @@
     box.hidden = false;
   }
   function acPick(i) {
+    if (acList[i].more) { acAll = true; acOpen(); $('pp-input').focus(); return; }
     const ta = $('pp-input'), ln = acLine(ta), name = acList[i].stop.name;
     ta.value = ta.value.substring(0, ln.start) + name + ta.value.substring(ln.end);
     const np = ln.start + name.length; ta.setSelectionRange(np, np); ta.focus();
@@ -218,6 +229,7 @@
     else if (e.key === 'Tab') { e.preventDefault(); acPick(acSel >= 0 ? acSel : 0); }
     else if (e.key === 'Enter') {            // como la app vieja: Enter completa con la primera sugerencia solo si lo escrito NO es ya una parada exacta
       if (acSel >= 0) { e.preventDefault(); acPick(acSel); return; }
+      if (acList[0] && acList[0].more) { acClose(); return; }
       const x = norm(acLine($('pp-input')).text);
       if (buildIndex().some(en => en.keys.includes(x))) acClose(); else { e.preventDefault(); acPick(0); }
     }
