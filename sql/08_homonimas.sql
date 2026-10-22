@@ -80,3 +80,6 @@ drop function public._bv_merge(text, text);
 drop function public._bv_retire(text, text);
 drop function public._bv_rename(text, text);
 drop function public._bv_stop(text);
+
+-- Ajuste posterior: BISSLI (R5) queda sin el "(2)" porque la otra ya se llama BISSLI DELRAY.
+update public.stops set name = 'BISSLI' where legacy_id = 's0601';
