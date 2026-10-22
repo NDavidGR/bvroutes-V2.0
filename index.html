@@ -29,6 +29,7 @@
     <label class="chk"><input type="checkbox" id="nopin"> Sin pin</label>
     <button id="btn-new" class="btn">+ Nueva parada</button>
     <a href="plan.html" class="btn-ghost lnkbtn">Plan del día</a>
+    <a href="reordenar.html" id="lnk-reo" class="btn-ghost lnkbtn" title="Reordenar una ruta sobre el mapa">Reordenar</a>
     <button id="btn-hist" class="btn-ghost">Historial</button>
     <button id="btn-exp" class="btn-ghost">Exportar</button>
     <button id="btn-out" class="btn-ghost">Salir</button>
@@ -93,7 +94,7 @@
   <div class="hist-head">
     <h2>Historial de cambios</h2>
     <input id="hist-q" type="search" placeholder="Buscar parada…" autocomplete="off">
-    <select id="hist-type"><option value="">Todos los tipos</option><option value="edit">Ediciones</option><option value="move">Movimientos</option><option value="add">Agregadas a ruta</option><option value="remove">Quitadas de ruta</option><option value="reorder">Reordenadas</option><option value="deactivate">Desactivadas</option><option value="reactivate">Reactivadas</option></select>
+    <select id="hist-type"><option value="">Todos los tipos</option><option value="edit">Ediciones</option><option value="move">Movimientos</option><option value="add">Agregadas a ruta</option><option value="remove">Quitadas de ruta</option><option value="reorder">Reordenadas</option><option value="set_order">Orden guardado</option><option value="deactivate">Desactivadas</option><option value="reactivate">Reactivadas</option></select>
     <button id="hist-close" class="icon" aria-label="Cerrar">✕</button>
   </div>
   <div id="hist-body" class="hist-body"></div>

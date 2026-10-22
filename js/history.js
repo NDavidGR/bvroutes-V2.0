@@ -3,7 +3,7 @@
   const C = window.BV_CONFIG;
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const LABEL = { edit: 'Edición', move: 'Movida', add: 'Agregada', remove: 'Quitada', reorder: 'Reordenada', deactivate: 'Desactivada', reactivate: 'Reactivada' };
+  const LABEL = { edit: 'Edición', move: 'Movida', add: 'Agregada', remove: 'Quitada', reorder: 'Reordenada', set_order: 'Orden guardado', deactivate: 'Desactivada', reactivate: 'Reactivada' };
   const FIELD = { name: 'Nombre', note: 'Nota', opens_at: 'Abre', tier: 'Cliente', fixed_position: 'Pos. fija', lat: 'Lat', lng: 'Lng', coord_source: 'Origen coords',
                   type: 'Tipo', plaza_key: 'Plaza', active: 'Activa', deactivated_reason: 'Motivo', deactivated_at: 'Fecha baja', name_key: 'Clave' };
   const TIER = { large: 'Grande', regular: 'Regular' };
@@ -18,6 +18,7 @@
       case 'move': return `${chip(c.from_route)}${pos(c.from_pos)} → ${chip(c.to_route)}${pos(c.to_pos)}`;
       case 'add': return `a ${chip(c.to_route || c.route_id)}${pos(c.to_pos)}`;
       case 'remove': return `de ${chip(c.from_route || c.route_id)}${pos(c.from_pos)}`;
+      case 'set_order': { const a = c.after || [], b = c.before || [], n = a.filter((id, i) => b[i] !== id).length; return `${chip(c.route_id)} ${a.length} paradas, ${n} cambiaron de lugar${c.note ? ' · ' + esc(c.note) : ''}`; }
       case 'reorder': return `${chip(c.route_id)} posición ${c.from_pos} → ${c.to_pos}`;
       default: {
         const a = c.after || {}, b = c.before || {};
@@ -33,7 +34,7 @@
       const st = BV.state.stops.get(c.stop_id), d = new Date(c.at);
       return `<div class="hrow"><time title="${esc(c.at)}">${d.toLocaleDateString('es-US', { month: 'short', day: 'numeric' })}<small>${d.toLocaleTimeString('es-US', { hour: 'numeric', minute: '2-digit' })}</small></time>
         <span class="hty hty-${esc(c.type)}">${esc(LABEL[c.type] || c.type)}</span>
-        <button class="lnk hstop" data-id="${esc(c.stop_id)}">${esc(st ? st.name : '(parada eliminada)')}</button>
+        ${c.stop_id ? `<button class="lnk hstop" data-id="${esc(c.stop_id)}">${esc(st ? st.name : '(parada eliminada)')}</button>` : '<span class="muted">Ruta completa</span>'}
         <span class="hdet">${detail(c)}</span></div>`;
     }).join('') || '<p class="muted">Sin cambios para este filtro.</p>')
       + (done ? '' : '<button id="hist-more" class="btn-ghost">Cargar más</button>');

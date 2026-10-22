@@ -114,6 +114,19 @@
       if (error) throw error;
     },
 
+    // Guarda el orden completo de una ruta (SQL 07). Lo que no venga en la lista queda al final.
+    async setRouteOrder(routeId, ids, note = null) {
+      const { error } = await sb.rpc('set_route_order', { p_route: routeId, p_order: ids, p_note: note });
+      if (error) throw error;
+      await BV.data.reloadMembers();
+    },
+    // Últimos guardados de orden de una ruta (para restaurar).
+    async orderSaves(routeId, limit = 10) {
+      const { data, error } = await sb.from('changes').select('id,at,before,after,note').eq('type', 'set_order').eq('route_id', routeId).order('at', { ascending: false }).limit(limit);
+      if (error) throw error;
+      return data || [];
+    },
+
     // Agrega la parada a la ruta justo después de la parada más cercana. Devuelve esa vecina (o null).
     async addAfterNearest(stopId, routeId, lat, lng) {
       const a = (BV.data.route(routeId).ordered && lat != null) ? BV.data.nearest(routeId, lat, lng, stopId, 1)[0] || null : null;

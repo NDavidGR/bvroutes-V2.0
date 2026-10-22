@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BV Reordenar ruta</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231b1c1e'/%3E%3Ctext x='16' y='22' font-size='16' text-anchor='middle' fill='%23FFC107' font-family='sans-serif' font-weight='700'%3EBV%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/styles.css?v=12">
+<link rel="stylesheet" href="css/reordenar.css?v=12">
+</head>
+<body class="reopage">
+<div id="ro" hidden>
+  <header class="top">
+    <a href="index.html" class="btn-ghost lnkbtn">← Rutas</a>
+    <h1><span>BV</span> Reordenar en el mapa</h1>
+    <select id="ro-route" aria-label="Ruta"></select>
+    <span id="ro-counter" class="ro-counter">—</span>
+    <div class="spacer"></div>
+    <button id="ro-restore" class="btn-ghost sm">Restaurar anterior…</button>
+    <button id="ro-save" class="btn" disabled>Guardar orden</button>
+  </header>
+  <div class="ro-tools">
+    <div class="grp"><span class="gl">Orden</span>
+      <button id="ro-propose" class="btn-ghost sm" title="Empieza en el punto más al sur y va al vecino más cercano">◇ Proponer</button>
+      <button id="ro-undo" class="btn-ghost sm" disabled>← Deshacer</button>
+      <button id="ro-reset" class="btn-ghost sm" title="Vuelve al orden guardado">Restablecer</button>
+      <button id="ro-empty" class="btn-ghost sm dng" title="Vacía el orden para clicar los pines uno a uno">Vaciar</button>
+    </div>
+    <div class="grp"><span class="gl">Selección</span>
+      <button id="ro-area" class="btn-ghost sm" title="Clic en una esquina y clic en la opuesta">▢ Área</button>
+      <button class="btn-ghost sm" data-sort="WE">W→E</button>
+      <button class="btn-ghost sm" data-sort="EW">E→W</button>
+      <button class="btn-ghost sm" data-sort="NS">N→S</button>
+      <button class="btn-ghost sm" data-sort="SN">S→N</button>
+      <button id="ro-start" class="btn-ghost sm">Al inicio</button>
+      <button id="ro-here" class="btn-ghost sm" title="Las junta donde empieza la primera de ellas">Juntar aquí</button>
+      <button id="ro-end" class="btn-ghost sm">Al final</button>
+      <button id="ro-clearsel" class="btn-ghost sm">Limpiar sel.</button>
+    </div>
+    <label class="chk"><input type="checkbox" id="ro-line" checked> Línea</label>
+    <span class="hint" id="ro-hint">Clic en un pin gris para agregarlo al final · arrastra en la lista para mover</span>
+  </div>
+  <div class="ro-body">
+    <div id="ro-mapwrap"><div id="ro-map"></div><div id="ro-tip" class="maptip" hidden></div><div id="ro-msg" class="mp-msg" hidden></div></div>
+    <aside id="ro-side">
+      <div class="side-title">Nuevo orden</div>
+      <div id="ro-warn" class="ro-warn" hidden></div>
+      <div id="ro-list"></div>
+    </aside>
+  </div>
+</div>
+
+<dialog id="dlg-restore">
+  <h2>Restaurar un orden anterior</h2>
+  <p class="muted small" id="rs-sub"></p>
+  <div id="rs-list"></div>
+  <div class="row"><button class="btn-ghost" id="rs-close" type="button">Cerrar</button></div>
+</dialog>
+
+<div id="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
+<script src="js/config.js?v=12"></script>
+<script src="js/auth.js?v=12"></script>
+<script src="js/data.js?v=12"></script>
+<script src="js/map.js?v=12"></script>
+<script src="js/reordenar.js?v=12"></script>
+</body>
+</html>

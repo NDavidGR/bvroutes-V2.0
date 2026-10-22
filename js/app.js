@@ -88,6 +88,7 @@
     const nh = items.length - shown.length;
     $('summary').textContent = shown.length + ' paradas en el mapa' + (nh ? ` · ${nh} ocultas` : '');
     $('v-line').disabled = !single;
+    $('lnk-reo').href = 'reordenar.html' + (single ? '?route=' + [...visible][0] : '');
     if (BV.panel.current()) BV.map.select(BV.panel.current());
   }
   // Contexto "estoy eligiendo dónde cae la parada": el mapa muestra solo la ruta destino numerada.
