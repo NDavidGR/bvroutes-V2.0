@@ -83,3 +83,6 @@ drop function public._bv_stop(text);
 
 -- Ajuste posterior: BISSLI (R5) queda sin el "(2)" porque la otra ya se llama BISSLI DELRAY.
 update public.stops set name = 'BISSLI' where legacy_id = 's0601';
+
+-- IN AND OUT (R5) también sin el "(2)": la de R1 se eliminó.
+update public.stops set name = 'IN AND OUT' where legacy_id = 's0576';
