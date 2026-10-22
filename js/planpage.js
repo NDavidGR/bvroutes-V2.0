@@ -158,6 +158,72 @@
     render();
   }
 
+
+  /* ---------- autocompletado al escribir (2 letras, tolera errores de tipeo) ---------- */
+  let acList = [], acSel = -1;
+  const acLine = ta => {
+    const v = ta.value, pos = ta.selectionStart, start = v.lastIndexOf('\n', pos - 1) + 1; let end = v.indexOf('\n', pos); if (end === -1) end = v.length;
+    return { text: v.substring(start, end).trim(), start, end, index: v.substring(0, start).split('\n').length - 1 };
+  };
+  function acSuggest(query) {
+    const x = norm(query); if (x.length < 2) return [];
+    const taken = new Set($('pp-input').value.split('\n').map(norm).filter(Boolean)); taken.delete(x);
+    const idx = buildIndex(), out = [];
+    idx.forEach(e => {
+      if (e.keys.includes(x) || e.keys.some(k => taken.has(k))) return;         // ya escrita o es justo lo que escribió
+      let sc = 9;
+      e.keys.forEach(k => { if (k.startsWith(x)) sc = Math.min(sc, 0); else if (k.includes(x)) sc = Math.min(sc, 1); });
+      if (sc < 9) out.push({ stop: e.stop, inRoute: e.inRoute, sc });
+    });
+    out.sort((a, b) => a.sc - b.sc || (b.inRoute - a.inRoute) || a.stop.name.localeCompare(b.stop.name));
+    let res = out.slice(0, 8);
+    if (res.length < 6 && x.length >= 3) {                                        // errores de tipeo
+      const have = new Set(res.map(r => r.stop.id)), fz = [];
+      idx.forEach(e => {
+        if (have.has(e.stop.id) || e.keys.includes(x) || e.keys.some(k => taken.has(k))) return;
+        let d = 0; e.keys.forEach(k => { d = Math.max(d, dice(x, k)); });
+        if (d >= 0.5) fz.push({ stop: e.stop, inRoute: e.inRoute, sc: 2, d: d + (e.inRoute ? 0.03 : 0) });
+      });
+      fz.sort((a, b) => b.d - a.d);
+      res = res.concat(fz.slice(0, 8 - res.length));
+    }
+    return res;
+  }
+  function acClose() { $('pp-ac').hidden = true; acList = []; acSel = -1; }
+  function acOpen() {
+    const ta = $('pp-input'), ln = acLine(ta), box = $('pp-ac');
+    acList = acSuggest(ln.text); acSel = -1;
+    if (!acList.length) { acClose(); return; }
+    const q = ln.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    box.innerHTML = acList.map((r, i) => {
+      const nm = esc(r.stop.name).replace(new RegExp('(' + esc(q) + ')', 'ig'), '<mark>$1</mark>');
+      const rs = r.inRoute ? '' : BV.data.routesOf(r.stop.id).map(m => `<b class="tag" style="${tagCol(m.route_id)}">R${esc(m.route_id)}</b>`).join(' ');
+      return `<div class="ac-i" data-i="${i}">${nm}${rs ? ` <span class="ac-r">${rs}</span>` : ''}</div>`;
+    }).join('');
+    const cs = getComputedStyle(ta), lh = parseFloat(cs.lineHeight) || 22, pt = parseFloat(cs.paddingTop) || 14;
+    box.style.top = Math.min(pt + (ln.index + 1) * lh - ta.scrollTop, ta.clientHeight - 30) + 'px';
+    box.hidden = false;
+  }
+  function acPick(i) {
+    const ta = $('pp-input'), ln = acLine(ta), name = acList[i].stop.name;
+    ta.value = ta.value.substring(0, ln.start) + name + ta.value.substring(ln.end);
+    const np = ln.start + name.length; ta.setSelectionRange(np, np); ta.focus();
+    cur().input = ta.value; renderSide(); save(route); acClose();
+  }
+  function acMark() { $('pp-ac').querySelectorAll('.ac-i').forEach((el, i) => el.classList.toggle('sel', i === acSel)); }
+  function acKey(e) {
+    if ($('pp-ac').hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); acSel = Math.min(acSel + 1, acList.length - 1); acMark(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); acSel = Math.max(acSel - 1, -1); acMark(); }
+    else if (e.key === 'Tab') { e.preventDefault(); acPick(acSel >= 0 ? acSel : 0); }
+    else if (e.key === 'Enter') {            // como la app vieja: Enter completa con la primera sugerencia solo si lo escrito NO es ya una parada exacta
+      if (acSel >= 0) { e.preventDefault(); acPick(acSel); return; }
+      const x = norm(acLine($('pp-input')).text);
+      if (buildIndex().some(en => en.keys.includes(x))) acClose(); else { e.preventDefault(); acPick(0); }
+    }
+    else if (e.key === 'Escape') acClose();
+  }
+
   /* ---------- acciones por línea ---------- */
   async function addToRoute(i) {
     const p = cur(), l = p.lines[i], s = BV.state.stops.get(l.stop_id);
@@ -272,8 +338,13 @@
     $('pp-go').onclick = organize;
     $('pp-clear').onclick = () => { const p = cur(); p.input = ''; p.lines = []; p.snapshot = null; p.organizedAt = null; p.sug = new Map(); render(); save(route); };
     $('pp-copy').onclick = async () => { try { await navigator.clipboard.writeText(cur().lines.map(l => l.raw).join('\n')); toast('Copiado'); } catch (e) { toast('No se pudo copiar', 'err'); } };
-    $('pp-input').addEventListener('input', e => { cur().input = e.target.value; renderSide(); save(route); });
+    $('pp-input').addEventListener('input', e => { cur().input = e.target.value; renderSide(); save(route); acOpen(); });
+    $('pp-input').addEventListener('keydown', acKey);
+    $('pp-input').addEventListener('blur', () => setTimeout(acClose, 150));
+    $('pp-input').addEventListener('scroll', () => { if (!$('pp-ac').hidden) acOpen(); });
+    $('pp-ac').addEventListener('mousedown', e => { const el = e.target.closest('.ac-i'); if (el) { e.preventDefault(); acPick(Number(el.dataset.i)); } });
     $('pp-map').onclick = openMap;
+    $('pp-all').onclick = () => { const w = window.open('mapa.html?date=' + date, 'bvLiveMap'); if (!w) toast('El navegador bloqueó la ventana. Permite pop-ups para este sitio.', 'err'); else w.focus(); };
     $('pm-close').onclick = () => $('dlg-map').close();
     $('pm-line').addEventListener('change', () => { if (mapReady && BV.map._items) BV.map.setLine($('pm-line').checked ? BV.map._items : null, C.ROUTE_COLORS[route] || '#555'); });
     $('pp-out').addEventListener('click', e => {

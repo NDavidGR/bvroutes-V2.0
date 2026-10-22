@@ -20,7 +20,7 @@ body.planpage #pp{height:100vh;height:100dvh;display:grid;grid-template-columns:
 .pp-panel{display:flex;flex-direction:column;min-height:0;min-width:0;padding:12px 16px 16px}
 .pp-panel+.pp-panel{border-left:1px solid var(--line)}
 .pp-ph{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 2px 8px}
-#pp-input{flex:1;min-height:0;width:100%;resize:none;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:13px/1.7 ui-monospace,Menlo,Consolas,monospace}
+#pp-input{width:100%;height:100%;resize:none;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:13px/1.7 ui-monospace,Menlo,Consolas,monospace}
 #pp-out{flex:1;min-height:0;overflow:auto;list-style:none;margin:0;padding:6px 8px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
 #pp-out:empty{display:none}
 .pp-empty{flex:1;display:grid;place-items:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
@@ -57,3 +57,10 @@ dialog.mapdlg[open]{display:flex}
   #pp-out li{grid-template-columns:24px 24px 1fr auto}
   #pp-out .grip{padding:12px 4px}
 }
+
+.pp-inwrap{position:relative;flex:1;min-height:0}
+.ac{position:absolute;left:14px;right:14px;z-index:8;background:var(--card2);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px #0007;max-height:290px;overflow:auto}
+.ac-i{padding:8px 12px;font:13px ui-monospace,Menlo,Consolas,monospace;cursor:pointer;display:flex;gap:8px;align-items:center}
+.ac-i:hover,.ac-i.sel{background:color-mix(in srgb,var(--amber) 20%,var(--card2))}
+.ac-i mark{background:none;color:var(--amber);font-weight:700}
+.ac-r .tag{background:var(--c);color:var(--t);border-radius:5px;padding:1px 6px;font-size:11px;font-weight:700}

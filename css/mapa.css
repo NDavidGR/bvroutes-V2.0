@@ -1,0 +1,22 @@
+body.mapapage #mp{height:100vh;height:100dvh;display:grid;grid-template-rows:auto 1fr}
+.mapapage .top{grid-area:auto;height:auto;min-height:52px;flex-wrap:wrap;padding:8px 14px;gap:10px}
+.mapapage .top input[type=date]{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.mp-routes{display:flex;gap:6px;flex-wrap:wrap}
+.mp-r{min-width:60px;padding:6px 10px 5px;border-radius:8px;border:1.5px solid var(--line);background:var(--card2);color:var(--muted);font-weight:700;font-size:12px;line-height:1.15;cursor:pointer;text-align:center}
+.mp-r small{display:block;font:500 9.5px ui-monospace,Menlo,Consolas,monospace;margin-top:2px;opacity:.9}
+.mp-r:hover{border-color:var(--muted)}
+.mp-r.on{background:var(--c);border-color:var(--c);color:var(--t)}
+.mp-r:disabled{opacity:.35;cursor:default}
+.hint{font-size:11px;color:var(--muted)}
+.mp-body{display:grid;grid-template-columns:1fr 250px;min-height:0}
+#mp-mapwrap{position:relative;min-width:0}
+#mp-map{position:absolute;inset:0}
+.mp-msg{position:absolute;inset:0;display:grid;place-items:center;padding:20px;text-align:center;background:var(--card);z-index:3}
+#mp-side{background:var(--card);border-left:1px solid var(--line);overflow:auto;padding:14px 14px 20px}
+#mp-side .side-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.mp-mg{margin:12px 0 4px;font-size:11px;font-weight:700;color:var(--c)}
+.mp-mi{font-size:12px;padding:5px 8px;border-left:3px solid var(--c);background:var(--card2);margin-bottom:3px;border-radius:0 6px 6px 0}
+.apin{min-width:22px;height:22px;padding:0 4px;border-radius:11px;border:2px solid #fff;box-shadow:0 1px 4px #0007;background:var(--c);color:var(--t);font:700 11px/18px var(--font);text-align:center;cursor:pointer}
+.apin:hover{transform:scale(1.3)}
+.iw{font:13px var(--font);color:#111;min-width:140px}.iw small{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#666;font-weight:700}.iw b{display:block;margin-top:3px}
+@media (max-width:900px){.mp-body{grid-template-columns:1fr;grid-template-rows:1fr 120px}#mp-side{border-left:0;border-top:1px solid var(--line)}.hint{display:none}}

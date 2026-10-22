@@ -50,6 +50,7 @@
     onSelect(fn) { onSelect = fn; },
     onMoved(fn) { onMoved = fn; },
     onHover(fn) { onHover = fn; },
+    gmap() { return map; },
     // Con fn, un clic en un pin llama fn(stopId) en vez de abrir la parada (modo "elegir referencia").
     setPickMode(fn) { pickFn = fn; if (wrap) wrap.classList.toggle('picking', !!fn); },
     // Línea que une las paradas en el orden recibido (items ya ordenados). null = sin línea.
