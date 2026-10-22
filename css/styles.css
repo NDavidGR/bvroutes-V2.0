@@ -185,3 +185,6 @@ dialog.wide[open]{display:flex}
 
 .row.nw{display:flex;gap:8px;flex-wrap:nowrap;margin-top:6px}.row.nw input{flex:1;min-width:0}
 #dlg-new .fld input{width:100%}
+
+.nopin{font-style:normal;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--on-amber);background:var(--amber);border-radius:4px;padding:1px 5px;margin-left:6px;white-space:nowrap}
+#dlg-exp .row{display:flex;gap:8px;flex-wrap:wrap}

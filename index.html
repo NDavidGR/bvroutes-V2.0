@@ -26,9 +26,11 @@
     <span id="summary" class="muted"></span>
     <div class="spacer"></div>
     <label class="chk"><input type="checkbox" id="inactive"> Ver inactivas</label>
+    <label class="chk"><input type="checkbox" id="nopin"> Sin pin</label>
     <button id="btn-new" class="btn">+ Nueva parada</button>
     <a href="plan.html" class="btn-ghost lnkbtn">Plan del día</a>
     <button id="btn-hist" class="btn-ghost">Historial</button>
+    <button id="btn-exp" class="btn-ghost">Exportar</button>
     <button id="btn-out" class="btn-ghost">Salir</button>
   </header>
 
@@ -79,6 +81,12 @@
     <p id="new-hint" class="muted small">Sin dirección ni coordenadas, se crea en el centro del mapa y arrastras el pin a su lugar.</p>
     <div class="row"><button class="btn" type="submit">Crear</button><button class="btn-ghost" type="button" id="new-cancel">Cancelar</button></div>
   </form>
+</dialog>
+
+<dialog id="dlg-exp">
+  <h2>Exportar</h2>
+  <p class="muted small">Paradas con sus rutas, posiciones y coordenadas.</p>
+  <div class="row"><button class="btn" id="exp-csv">CSV (Excel)</button><button class="btn" id="exp-json">JSON (respaldo)</button><button class="btn-ghost" id="exp-close">Cerrar</button></div>
 </dialog>
 
 <dialog id="dlg-hist" class="wide">

@@ -8,7 +8,7 @@
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sin almacenamiento */ } }
   };
   const NEW_HINT = 'Sin dirección ni coordenadas, se crea en el centro del mapa y arrastras el pin a su lugar.';
-  let visible = new Set(), showInactive = false, query = '', mapKey = null, pickCtx = null, lineOn = false;
+  let visible = new Set(), showInactive = false, query = '', noPin = false, mapKey = null, pickCtx = null, lineOn = false;
   const hidden = new Set();   // paradas apagadas en el mapa (solo vista, no se guarda en la base)
 
   BV.toast = (msg, kind) => {
@@ -51,7 +51,11 @@
 
   function renderList(items, numbered) {
     let rows;
-    if (query) {
+    if (noPin) {
+      rows = [...BV.state.stops.values()].filter(s => (showInactive || s.active) && s.lat == null && (!query || s.name.toLowerCase().includes(query.toLowerCase())))
+        .map(stop => ({ stop, routeIds: BV.data.routesOf(stop.id).map(m => m.route_id) }));
+      rows.sort((a, b) => a.stop.name.localeCompare(b.stop.name));
+    } else if (query) {
       const q = query.toLowerCase();
       rows = [...BV.state.stops.values()].filter(s => (showInactive || s.active) && (s.name.toLowerCase().includes(q) || (s.legacy_names || []).some(n => n.toLowerCase().includes(q))))
         .map(stop => ({ stop, routeIds: BV.data.routesOf(stop.id).map(m => m.route_id) }));
@@ -61,15 +65,15 @@
     }
     const total = rows.length, shown = rows.slice(0, 300);
     $('list').dataset.route = (numbered && !query && !pickCtx) ? [...visible][0] : '';
-    $('count').textContent = (query ? 'Resultados: ' : 'Visibles: ') + total;
+    $('count').textContent = (noPin ? 'Sin pin: ' : query ? 'Resultados: ' : 'Visibles: ') + total;
     $('list').innerHTML = shown.map(r => {
       const s = r.stop, sel = s.id === BV.panel.current() ? ' sel' : '';
       const dots = (r.routeIds || []).map(id => `<i style="background:${C.ROUTE_COLORS[id] || '#888'}" title="R${id}"></i>`).join('');
-      const canDrag = numbered && !query && !pickCtx;
-      const pos = (numbered && !query) ? `<small>${r.position}</small>` : '';
+      const canDrag = numbered && !query && !pickCtx && !noPin;
+      const pos = (numbered && !query && !noPin) ? `<small>${r.position}</small>` : '';
       const hid = hidden.has(s.id) ? ' hid' : '';
       return `<li class="${sel}${s.active ? '' : ' off'}${hid}" data-id="${s.id}" data-pos="${r.position ?? ''}"><b class="eye" data-eye title="${hid ? 'Mostrar en el mapa' : 'Ocultar del mapa'}">${hid ? '◌' : '●'}</b>${canDrag ? '<b class="grip" title="Arrastra para cambiar la posición">⠿</b>' : ''}${pos}<span>${esc(s.name)}</span>
-        ${s.note ? '<u title="' + esc(s.note) + '">!</u>' : ''}${s.opens_at ? '<code>' + s.opens_at.slice(0, 5) + '</code>' : ''}<div class="dots">${dots}</div></li>`;
+        ${s.lat == null ? '<em class="nopin">SIN PIN</em>' : (s.coord_source === 'manual' ? '' : '')}${s.note ? '<u title="' + esc(s.note) + '">!</u>' : ''}${s.opens_at ? '<code>' + s.opens_at.slice(0, 5) + '</code>' : ''}<div class="dots">${dots}</div></li>`;
     }).join('') + (total > shown.length ? `<li class="more">… ${total - shown.length} más. Afina la búsqueda.</li>` : '');
   }
 
@@ -189,6 +193,27 @@
     $('r-none').onclick = () => { visible = new Set(); ls.set('bv_visible', []); refresh(); };
     $('search').addEventListener('input', e => { query = e.target.value.trim(); refresh(); });
     $('list').addEventListener('click', e => { const li = e.target.closest('li[data-id]'); if (li) select(li.dataset.id); });
+    $('nopin').addEventListener('change', e => { noPin = e.target.checked; refresh(); });
+    $('btn-exp').onclick = () => $('dlg-exp').showModal();
+    $('exp-close').onclick = () => $('dlg-exp').close();
+    const download = (name, text, type) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
+    const stamp = () => new Date().toISOString().slice(0, 10);
+    const exportRows = () => {
+      const rows = [];
+      for (const s of BV.state.stops.values()) {
+        const ms = BV.data.routesOf(s.id);
+        if (!ms.length) rows.push({ route: '', position: '', stop: s });
+        else ms.forEach(m => rows.push({ route: m.route_id, position: m.position ?? '', zone: m.zone ?? '', stop: s }));
+      }
+      return rows.sort((a, b) => String(a.route).localeCompare(String(b.route), undefined, { numeric: true }) || (a.position || 1e9) - (b.position || 1e9) || a.stop.name.localeCompare(b.stop.name));
+    };
+    $('exp-csv').onclick = () => {
+      const q = v => { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      const head = ['ruta', 'posicion', 'zona', 'parada', 'lat', 'lng', 'activa', 'abre', 'nota'];
+      const body = exportRows().map(r => [r.route, r.position, r.zone || '', r.stop.name, r.stop.lat ?? '', r.stop.lng ?? '', r.stop.active ? 'si' : 'no', r.stop.opens_at || '', r.stop.note || ''].map(q).join(','));
+      download(`bv-rutas-${stamp()}.csv`, '\ufeff' + [head.join(','), ...body].join('\n'), 'text/csv;charset=utf-8');
+    };
+    $('exp-json').onclick = () => download(`bv-rutas-${stamp()}.json`, JSON.stringify({ exported_at: new Date().toISOString(), routes: BV.state.routes, depot: BV.state.depot, stops: [...BV.state.stops.values()], members: BV.state.members }, null, 1), 'application/json');
     $('inactive').addEventListener('change', e => { showInactive = e.target.checked; refresh(); });
     $('drawer-close').onclick = () => { BV.panel.close(); BV.map.clearSelection(); refresh(); };
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && BV.panel.current()) $('drawer-close').click(); });

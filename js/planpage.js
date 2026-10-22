@@ -328,6 +328,13 @@
     });
     $('pp-menu').onclick = () => document.body.classList.toggle('pp-side-open');
     $('pp-go').onclick = organize;
+    $('pp-day-clear').onclick = () => {
+      const n = [...plans.values()].filter(p => p.input || p.lines.length).length;
+      if (!n) { toast('El día ya está vacío'); return; }
+      if (!confirm(`¿Limpiar TODO el día ${date}? Se vacían ${n} ruta(s). Las versiones anteriores quedan en el historial.`)) return;
+      plans.forEach((p, r) => { p.input = ''; p.lines = []; p.snapshot = null; p.organizedAt = null; p.sug = new Map(); save(r); });
+      render(); toast('Día limpiado');
+    };
     $('pp-clear').onclick = () => { const p = cur(); p.input = ''; p.lines = []; p.snapshot = null; p.organizedAt = null; p.sug = new Map(); render(); save(route); };
     $('pp-copy').onclick = async () => { try { await navigator.clipboard.writeText(cur().lines.map(l => l.raw).join('\n')); toast('Copiado'); } catch (e) { toast('No se pudo copiar', 'err'); } };
     $('pp-input').addEventListener('input', e => { cur().input = e.target.value; renderSide(); save(route); acOpen(); });
