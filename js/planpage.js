@@ -60,6 +60,8 @@
   const isOrdered = () => !!BV.data.route(route).ordered;
 
   /* ---------- organizar ---------- */
+  // Lo que va después del primer "/" (p. ej. "KC HLWD / SHLOMI": paradas que van juntas en el mismo pallet). Solo texto de apoyo: la parada se busca por lo de antes del "/".
+  const tailOf = raw => { const i = String(raw || '').indexOf('/'); return i < 0 ? '' : raw.slice(i + 1).trim().toUpperCase(); };
   function organize() {
     const p = cur();
     p.input = $('pp-input').value;
@@ -121,7 +123,7 @@
         acts = `<span class="sug">${sg}</span><button type="button" class="btn-ghost sm" data-create="${i}">Crear parada</button>`;
       }
       return `<li class="st-${l.status}" data-i="${i}"><b class="grip" title="Arrastra para cambiar el orden de hoy">⠿</b><span class="n">${i + 1}</span>
-        <div class="nm"><b>${esc(s ? s.name : l.raw)}</b>${meta}</div>
+        <div class="nm"><b>${esc(s ? s.name : l.raw)}</b>${s && tailOf(l.raw) ? `<span class="tail">/ ${esc(tailOf(l.raw))}</span>` : ''}${meta}</div>
         <div class="acts">${acts}<button type="button" class="x" data-del="${i}" title="Quitar del plan">✕</button></div></li>`;
     }).join('');
     renderSide();
@@ -352,7 +354,7 @@
       render(); toast('Día limpiado');
     };
     $('pp-clear').onclick = () => { const p = cur(); p.input = ''; p.lines = []; p.snapshot = null; p.organizedAt = null; p.sug = new Map(); render(); save(route); };
-    $('pp-copy').onclick = async () => { try { await navigator.clipboard.writeText(cur().lines.map(l => l.raw).join('\n')); toast('Copiado'); } catch (e) { toast('No se pudo copiar', 'err'); } };
+    $('pp-copy').onclick = async () => { try { await navigator.clipboard.writeText(cur().lines.map(l => { const s = l.stop_id && BV.state.stops.get(l.stop_id); return s ? s.name + (tailOf(l.raw) ? ' / ' + tailOf(l.raw) : '') : l.raw; }).join('\n')); toast('Copiado'); } catch (e) { toast('No se pudo copiar', 'err'); } };
     $('pp-input').addEventListener('input', e => { cur().input = e.target.value; renderSide(); save(route); acOpen(); });
     $('pp-input').addEventListener('keydown', acKey);
     $('pp-input').addEventListener('blur', () => setTimeout(acClose, 150));

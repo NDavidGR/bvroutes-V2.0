@@ -71,3 +71,4 @@ dialog.mapdlg[open]{display:flex}
 .ac-more{color:var(--muted);font-size:12px;font-style:italic}
 .ac-ok{color:var(--ok,#7ddc8a)}
 .ac-n{white-space:pre-wrap}
+.tail{margin-left:6px;font-weight:700;color:var(--amber);white-space:nowrap}

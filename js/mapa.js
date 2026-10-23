@@ -18,6 +18,7 @@
   const col = r => C.ROUTE_COLORS[r] || '#888';
   const label = r => r === '9' ? '2WPB' : 'R' + r;
 
+  const tailOf = raw => { const i = String(raw || '').indexOf('/'); return i < 0 ? '' : raw.slice(i + 1).trim().toUpperCase(); };
   function build(rows) {
     const out = {};
     BV.state.routes.forEach(r => { out[r.id] = { total: 0, plotted: [], missing: [] }; });
@@ -26,7 +27,7 @@
       (row.lines || []).forEach((l, i) => {
         d.total++;
         const s = l.stop_id ? BV.state.stops.get(l.stop_id) : null;
-        if (s && s.lat != null) d.plotted.push({ stop: s, order: i + 1 });
+        if (s && s.lat != null) d.plotted.push({ stop: s, order: i + 1, tail: tailOf(l.raw) });
         else d.missing.push({ name: s ? s.name : l.raw, order: i + 1 });
       });
     });
@@ -65,12 +66,12 @@
       if (L && L.sig === rsig) { d.plotted.forEach(p => { b.extend({ lat: p.stop.lat, lng: p.stop.lng }); any = true; }); return; }
       clearLayer(r);
       const markers = d.plotted.map(p => {
-        const el = document.createElement('div'); el.className = 'apin'; el.textContent = p.order; el.title = `${label(r)} #${p.order} · ${p.stop.name}`;
+        const el = document.createElement('div'); el.className = 'apin'; el.textContent = p.order; el.title = `${label(r)} #${p.order} · ${p.stop.name}${p.tail ? ' / ' + p.tail : ''}`;
         el.style.setProperty('--c', col(r)); el.style.setProperty('--t', C.textOn(col(r)));
         const m = new google.maps.marker.AdvancedMarkerElement({ map, position: { lat: p.stop.lat, lng: p.stop.lng }, content: el, zIndex: 10 });
         el.addEventListener('click', e => {
           e.stopPropagation();
-          info.setContent(`<div class="iw"><small>Ruta ${esc(r)} · parada #${p.order}</small><b>${esc(p.stop.name)}</b></div>`);
+          info.setContent(`<div class="iw"><small>Ruta ${esc(r)} · parada #${p.order}</small><b>${esc(p.stop.name)}${p.tail ? ' / ' + esc(p.tail) : ''}</b></div>`);
           info.open({ map, anchor: m });
         });
         b.extend({ lat: p.stop.lat, lng: p.stop.lng }); any = true;
