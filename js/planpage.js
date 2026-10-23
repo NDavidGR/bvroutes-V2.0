@@ -169,6 +169,25 @@
   };
   // Solo sugiere paradas de la ruta que se está armando. Las de otros camiones aparecen únicamente si se piden (acAll).
   let acAll = false, acLast = '';
+  // Distancia de edición (con letras cambiadas de lugar) entre lo escrito y el comienzo del nombre, o de cualquiera de sus palabras.
+  function osa(a, b) {
+    const m = a.length, n = b.length, d = [];
+    for (let i = 0; i <= m; i++) { d[i] = [i]; }
+    for (let j = 1; j <= n; j++) d[0][j] = j;
+    for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+    return d[m][n];
+  }
+  function typoDist(x, k) {
+    const tol = x.length < 3 ? 0 : x.length <= 5 ? 1 : x.length <= 8 ? 2 : 3;
+    if (!tol) return 9;
+    const starts = [0]; for (let i = 0; i < k.length; i++) if (k[i] === ' ') starts.push(i + 1);
+    let best = 9;
+    starts.forEach(st => { const v = k.slice(st); [x.length - 1, x.length, x.length + 1].forEach(n => { if (n >= 2 && n <= v.length) best = Math.min(best, osa(x, v.slice(0, n))); }); });
+    return best <= tol ? best : 9;
+  }
   function acCore(idx, x, taken) {
     const out = [];
     idx.forEach(e => {
@@ -179,14 +198,15 @@
     });
     out.sort((a, b) => a.sc - b.sc || a.stop.name.localeCompare(b.stop.name));
     let res = out.slice(0, 8);
-    if (res.length < 6 && x.length >= 3) {                                        // errores de tipeo
+    if (res.length < 6 && x.length >= 3) {                                        // errores de tipeo (también con el nombre a medias)
       const have = new Set(res.map(r => r.stop.id)), fz = [];
       idx.forEach(e => {
         if (have.has(e.stop.id) || e.keys.includes(x) || e.keys.some(k => taken.has(k))) return;
-        let d = 0; e.keys.forEach(k => { d = Math.max(d, dice(x, k)); });
-        if (d >= 0.5) fz.push({ stop: e.stop, inRoute: e.inRoute, sc: 2, d });
+        let d = 9, dc = 0; e.keys.forEach(k => { d = Math.min(d, typoDist(x, k)); dc = Math.max(dc, dice(x, k)); });
+        if (d < 9) fz.push({ stop: e.stop, inRoute: e.inRoute, sc: 2, d });
+        else if (dc >= 0.55) fz.push({ stop: e.stop, inRoute: e.inRoute, sc: 2, d: 5 - dc });
       });
-      fz.sort((a, b) => b.d - a.d);
+      fz.sort((a, b) => a.d - b.d || a.stop.name.localeCompare(b.stop.name));
       res = res.concat(fz.slice(0, 8 - res.length));
     }
     return res;
@@ -357,7 +377,9 @@
     $('pp-copy').onclick = async () => { try { await navigator.clipboard.writeText(cur().lines.map(l => { const s = l.stop_id && BV.state.stops.get(l.stop_id); return s ? s.name + (tailOf(l.raw) ? ' / ' + tailOf(l.raw) : '') : l.raw; }).join('\n')); toast('Copiado'); } catch (e) { toast('No se pudo copiar', 'err'); } };
     $('pp-input').addEventListener('input', e => { cur().input = e.target.value; renderSide(); save(route); acOpen(); });
     $('pp-input').addEventListener('keydown', acKey);
-    $('pp-input').addEventListener('blur', () => setTimeout(acClose, 150));
+    let acT = null;
+    $('pp-input').addEventListener('blur', () => { acT = setTimeout(acClose, 150); });
+    $('pp-input').addEventListener('focus', () => clearTimeout(acT));
     $('pp-input').addEventListener('scroll', () => { if (!$('pp-ac').hidden) acOpen(); });
     $('pp-ac').addEventListener('mousedown', e => { const el = e.target.closest('.ac-i'); if (el) { e.preventDefault(); acPick(Number(el.dataset.i)); } });
     $('pp-map').onclick = openMap;

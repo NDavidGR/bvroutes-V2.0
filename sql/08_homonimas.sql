@@ -49,7 +49,7 @@ begin
   perform public._bv_rename('s0379', 'ELEGANT CATERING FORT L.');
   perform public._bv_rename('s0122', 'FRUTERIA HLNDL');
   perform public._bv_rename('s0485', 'FRUTERIA AVENTURA');
-  perform public._bv_rename('s0447', 'GRAND CAFE NMB');
+  perform public._bv_rename('s0447', 'GRAND CAFE MG');
   perform public._bv_rename('s0240', 'HUMMUS VEGAS NMB');
   perform public._bv_rename('s0538', 'KOSHER BASEBALL HLWD');
   perform public._bv_rename('s0198', 'KOSHER FISH MARKET 801');
