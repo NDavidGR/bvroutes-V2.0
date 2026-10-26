@@ -6,7 +6,7 @@ window.BV_CONFIG = {
   MAP_CENTER: { lat: 25.86, lng: -80.2 },
   MAP_ZOOM: 11,
   ROUTE_COLORS: { '1': '#FF7A1A', '2': '#3B82F6', '3': '#8BC34A', '4': '#12B5A6', '5': '#B3202A',
-                  '6': '#D9A400', '7': '#D6249F', '8': '#4B5563', '9': '#1E3A8A' }
+                  '6': '#D9A400', '7': '#D6249F', '8': '#4B5563', '9': '#1E3A8A', '10': '#7C3AED' }
 };
 // Color de texto legible sobre el color de una ruta (negro sobre colores claros, blanco sobre oscuros).
 window.BV_CONFIG.textOn = function (hex) {

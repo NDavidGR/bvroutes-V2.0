@@ -60,11 +60,11 @@
       const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
       return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
     },
-    // Dirección -> coordenadas (Google Geocoder, sesgado hacia el sur de Florida).
+    // Dirección -> coordenadas (Google Geocoder, sesgado hacia Florida (Miami a Jacksonville, Naples a Tampa)).
     async geocode(address, key) {
       await loadScript(key);
       return new Promise((resolve, reject) => {
-        new google.maps.Geocoder().geocode({ address, bounds: { south: 25.0, west: -80.9, north: 27.0, east: -79.9 }, region: 'us' }, (r, st) => {
+        new google.maps.Geocoder().geocode({ address, bounds: { south: 25.0, west: -83.5, north: 30.8, east: -79.9 }, region: 'us' }, (r, st) => {
           if (st === 'OK' && r && r.length) resolve({ lat: r[0].geometry.location.lat(), lng: r[0].geometry.location.lng(), text: r[0].formatted_address });
           else reject(new Error(st === 'ZERO_RESULTS' ? 'No encontré esa dirección. Sé más específico (calle, número, ciudad).'
             : st === 'REQUEST_DENIED' ? 'Google rechazó la búsqueda: hay que activar "Geocoding API" en la llave de Google Maps.' : 'Error de búsqueda: ' + st));
