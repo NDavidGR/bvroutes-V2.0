@@ -123,7 +123,7 @@
         acts = `<span class="sug">${sg}</span><button type="button" class="btn-ghost sm" data-create="${i}">Crear parada</button>`;
       }
       return `<li class="st-${l.status}" data-i="${i}"><b class="grip" title="Arrastra para cambiar el orden de hoy">⠿</b><span class="n">${i + 1}</span>
-        <div class="nm"><b>${esc(s ? s.name : l.raw)}</b>${s && tailOf(l.raw) ? `<span class="tail">/ ${esc(tailOf(l.raw))}</span>` : ''}${meta}</div>
+        <div class="nm"><b>${esc((s ? s.name : l.raw).toUpperCase())}</b>${s && tailOf(l.raw) ? `<span class="tail">/ ${esc(tailOf(l.raw))}</span>` : ''}${meta}</div>
         <div class="acts">${acts}<button type="button" class="x" data-del="${i}" title="Quitar del plan">✕</button></div></li>`;
     }).join('');
     renderSide();
@@ -374,7 +374,7 @@
       render(); toast('Día limpiado');
     };
     $('pp-clear').onclick = () => { const p = cur(); p.input = ''; p.lines = []; p.snapshot = null; p.organizedAt = null; p.sug = new Map(); render(); save(route); };
-    $('pp-copy').onclick = async () => { try { await navigator.clipboard.writeText(cur().lines.map(l => { const s = l.stop_id && BV.state.stops.get(l.stop_id); return s ? s.name + (tailOf(l.raw) ? ' / ' + tailOf(l.raw) : '') : l.raw; }).join('\n')); toast('Copiado'); } catch (e) { toast('No se pudo copiar', 'err'); } };
+    $('pp-copy').onclick = async () => { try { await navigator.clipboard.writeText(cur().lines.map(l => { const s = l.stop_id && BV.state.stops.get(l.stop_id); return s ? s.name.toUpperCase() + (tailOf(l.raw) ? ' / ' + tailOf(l.raw) : '') : l.raw; }).join('\n')); toast('Copiado'); } catch (e) { toast('No se pudo copiar', 'err'); } };
     $('pp-input').addEventListener('input', e => { cur().input = e.target.value; renderSide(); save(route); acOpen(); });
     $('pp-input').addEventListener('keydown', acKey);
     let acT = null;
