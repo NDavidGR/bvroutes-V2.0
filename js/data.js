@@ -115,13 +115,6 @@
       if (error) throw error;
     },
 
-    // Enlace de My Maps de la ruta (la 9 usa el de su ruta base, la 2, si no tiene propio).
-    myMapsUrl(routeId) { const r = BV.data.route(routeId); if (!r) return null; return r.mymaps_url || (r.base_route && (BV.data.route(r.base_route) || {}).mymaps_url) || null; },
-    async setMyMapsUrl(routeId, url) {
-      const { error } = await sb.from('routes').update({ mymaps_url: url || null }).eq('id', routeId);
-      if (error) throw error;
-      BV.data.route(routeId).mymaps_url = url || null;
-    },
     // Guarda el orden completo de una ruta (SQL 07). Lo que no venga en la lista queda al final.
     async setRouteOrder(routeId, ids, note = null) {
       const { error } = await sb.rpc('set_route_order', { p_route: routeId, p_order: ids, p_note: note });

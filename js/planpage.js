@@ -383,20 +383,6 @@
     $('pp-input').addEventListener('scroll', () => { if (!$('pp-ac').hidden) acOpen(); });
     $('pp-ac').addEventListener('mousedown', e => { const el = e.target.closest('.ac-i'); if (el) { e.preventDefault(); acPick(Number(el.dataset.i)); } });
     $('pp-map').onclick = openMap;
-    $('pp-mymaps').onclick = async e => {
-      let url = BV.data.myMapsUrl(route);
-      if (!url || e.shiftKey) {                               // sin enlace guardado, o Mayús + clic: pedir/cambiar el enlace
-        const v = prompt(`Pega el enlace de My Maps de la Ruta ${route}${url ? ' (vacío = quitarlo)' : ''}:`, url || '');
-        if (v === null) return;
-        const clean = v.trim();
-        if (clean && !/^https:\/\/(www\.)?google\.com\/maps\//i.test(clean)) { toast('Ese enlace no es de Google Maps', 'err'); return; }
-        try { await BV.data.setMyMapsUrl(route, clean); toast(clean ? 'Enlace guardado ✓' : 'Enlace quitado'); }
-        catch (err) { toast('No se guardó: ' + (err.message || err), 'err'); return; }
-        if (e.shiftKey || !clean) return;
-        url = clean;
-      }
-      if (!window.open(url, 'bvMyMaps_' + route)) toast('El navegador bloqueó la ventana. Permite pop-ups para este sitio.', 'err');
-    };
     $('pp-all').onclick = () => { const w = window.open('mapa.html?date=' + date, 'bvLiveMap'); if (!w) toast('El navegador bloqueó la ventana. Permite pop-ups para este sitio.', 'err'); else w.focus(); };
     $('pm-close').onclick = () => $('dlg-map').close();
     $('pm-line').addEventListener('change', () => { if (mapReady && BV.map._items) BV.map.setLine($('pm-line').checked ? BV.map._items : null, C.ROUTE_COLORS[route] || '#555'); });
