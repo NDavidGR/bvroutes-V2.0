@@ -83,10 +83,53 @@
     lines.forEach((l, i) => { l._k = key(l, i); });
     lines.sort((a, b) => a._k[0] - b._k[0] || (typeof a._k[1] === 'string' ? a._k[1].localeCompare(b._k[1]) : a._k[1] - b._k[1]));
     lines.forEach(l => delete l._k);
-    p.lines = lines; p.organizedAt = new Date().toISOString();
+    // Si el día ya tiene un Output en una ruta con orden, se conserva tal cual (incluido lo que arrastraste):
+    // solo se quitan las que ya no están en el Input y se ubican las nuevas junto a la parada más cercana del Output.
+    let added = 0, removed = 0, final = lines;
+    if (isOrdered() && p.lines.some(l => l.stop_id)) {
+      const merged = mergeIntoOutput(p.lines, lines);
+      final = merged.lines; added = merged.added; removed = merged.removed;
+    }
+    p.lines = final; p.organizedAt = new Date().toISOString();
     p.snapshot = BV.data.membersOf(route).map(m => ({ stop_id: m.stop_id, position: m.position }));
     render(); save(route);
-    toast(`Organizadas ${lines.length} paradas` + (dup ? ` · ${dup} repetidas omitidas` : ''));
+    toast(added || removed
+      ? `Orden del día conservado · ${added} nueva${added === 1 ? '' : 's'} ubicada${added === 1 ? '' : 's'}` + (removed ? ` · ${removed} quitada${removed === 1 ? '' : 's'}` : '') + (dup ? ` · ${dup} repetidas omitidas` : '')
+      : `Organizadas ${final.length} paradas` + (dup ? ` · ${dup} repetidas omitidas` : ''));
+  }
+
+  const milesBetween = (a, b) => {
+    const R = 3958.8, rad = x => x * Math.PI / 180, dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+  // prev = Output actual (con el orden del día); fresh = líneas del Input ya resueltas y ordenadas por la ruta.
+  function mergeIntoOutput(prev, fresh) {
+    const byStop = new Map(), byRaw = new Map();
+    fresh.forEach(l => { if (l.stop_id) byStop.set(l.stop_id, l); else byRaw.set(l.raw, l); });
+    const used = new Set(), out = []; let removed = 0;
+    prev.forEach(l => {
+      const f = l.stop_id ? byStop.get(l.stop_id) : byRaw.get(l.raw);
+      if (f && !used.has(f)) { used.add(f); out.push({ ...l, raw: f.raw, status: f.status }); } else removed++;
+    });
+    let added = 0;
+    fresh.filter(f => !used.has(f)).forEach(f => {            // las nuevas, en el orden natural de la ruta
+      added++;
+      if (!f.stop_id) { out.push(f); return; }                // sin resolver: al final
+      const st = BV.state.stops.get(f.stop_id);
+      let at = -1;
+      if (st && st.lat != null) {
+        let best = Infinity;
+        out.forEach((o, i) => {
+          const os = o.stop_id && BV.state.stops.get(o.stop_id);
+          if (!os || os.lat == null) return;
+          const d = milesBetween(st, os); if (d < best) { best = d; at = i; }
+        });
+      }
+      if (at >= 0) out.splice(at + 1, 0, f);
+      else { const firstUnk = out.findIndex(o => !o.stop_id); out.splice(firstUnk < 0 ? out.length : firstUnk, 0, f); }
+    });
+    return { lines: out, added, removed };
   }
 
   /* ---------- pantalla ---------- */

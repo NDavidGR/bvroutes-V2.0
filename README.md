@@ -21,7 +21,7 @@ Panel de rutas sobre Supabase. Sitio estático (HTML + JS sin build): se publica
 
 ## Páginas
 - `index.html` — Rutas: mapa, edición de paradas, mover/agregar, reordenar, historial.
-- `plan.html` — Plan del día: pegar paradas, ORGANIZE, salida ordenada, mapa del orden del día. Comparte la sesión con `index.html`.
+- `plan.html` — Plan del día: pegar paradas, ORGANIZE, salida ordenada, mapa del orden del día. Si el día ya tiene Output (p. ej. con el orden que dejó el conductor), ORGANIZE lo conserva: solo ubica las paradas nuevas junto a la más cercana y quita las que borraste del Input; para rehacer todo desde el orden de la ruta, Limpiar y ORGANIZE. Comparte la sesión con `index.html`.
 - `mapa.html` — Mapa de TODAS las rutas del día superpuestas (solo las paradas del plan), en vivo; se abre desde el Plan del día.
 - `reordenar.html` — Reordenar una ruta sobre el mapa: clic en pines, ▢ Área, orden por eje, proponer, arrastrar en la lista, guardar y restaurar órdenes anteriores.
 
