@@ -88,7 +88,8 @@
     let added = 0, removed = 0, final = lines;
     if (isOrdered() && p.lines.some(l => l.stop_id)) {
       const merged = mergeIntoOutput(p.lines, lines);
-      final = merged.lines; added = merged.added; removed = merged.removed;
+      // Si ninguna línea del Output coincide con el Input (p. ej. un resto de otra prueba), no hay orden que conservar: orden de la ruta.
+      if (merged.lines.length - merged.added > 0) { final = merged.lines; added = merged.added; removed = merged.removed; }
     }
     p.lines = final; p.organizedAt = new Date().toISOString();
     p.snapshot = BV.data.membersOf(route).map(m => ({ stop_id: m.stop_id, position: m.position }));
