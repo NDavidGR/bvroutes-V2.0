@@ -54,6 +54,18 @@
     sc.sort((a, b) => b.d - a.d);
     return { stop: null, suggestions: sc.slice(0, 3).map(r => r.stop) };
   }
+  // Paradas con nombre parecido a lo escrito (distintas de la ya reconocida y que aún no están en el plan).
+  function altsFor(l, idx) {
+    const x = norm(l.raw); if (!x || !idx) return [];
+    const inPlan = new Set(cur().lines.map(q => q.stop_id)), sc = [];
+    idx.forEach(e => {
+      if (e.stop.id === l.stop_id || inPlan.has(e.stop.id)) return;
+      let d = 0; e.keys.forEach(k => { d = Math.max(d, (k.length > 3 && x.length > 3 && (k.startsWith(x) || x.startsWith(k))) ? 0.9 : dice(x, k)); });
+      if (d >= 0.6) sc.push({ stop: e.stop, d: d + (e.inRoute ? 0.02 : 0) });
+    });
+    sc.sort((a, b) => b.d - a.d);
+    return sc.slice(0, 2).map(r => r.stop);
+  }
   const statusOf = id => !id ? 'unk' : (BV.data.membersOf(route).some(m => m.stop_id === id) ? 'route' : (BV.state.stops.get(id) ? 'other' : 'unk'));
   const posOf = id => { const m = BV.data.membersOf(route).find(x => x.stop_id === id); return m ? m.position : null; };
   const anchorOf = stop => (stop.lat == null ? null : BV.data.nearest(route, stop.lat, stop.lng, stop.id, 1)[0] || null);
@@ -152,6 +164,7 @@
     if (!p.lines.length) { pill.textContent = ''; pill.className = 'pill'; }
     else if (unk || oth) { pill.textContent = [unk ? unk + ' sin reconocer' : '', oth ? oth + ' de otra ruta' : ''].filter(Boolean).join(' · '); pill.className = 'pill warn'; }
     else { pill.textContent = 'OK · ' + p.lines.length; pill.className = 'pill ok'; }
+    const otherIdx = p.lines.some(l => l.status === 'other') ? buildIndex() : null;
     $('pp-out').innerHTML = p.lines.map((l, i) => {
       const s = l.stop_id ? BV.state.stops.get(l.stop_id) : null;
       let meta = '', acts = '';
@@ -160,7 +173,9 @@
         const rs = BV.data.routesOf(l.stop_id).map(m => `<b class="tag" style="${tagCol(m.route_id)}">R${esc(m.route_id)}</b>`).join(' ');
         const a = s && isOrdered() ? anchorOf(s) : null;
         meta = `${rs}${a ? `<span class="meta">cerca de ${esc(a.stop.name)} #${a.position}</span>` : ''}`;
-        acts = `<button type="button" class="btn-ghost sm" data-addroute="${i}">Agregar a R${esc(route)}</button>`;
+        // Por si la reconocida es otra parada con nombre parecido (p. ej. "Pura Vida" de otra ruta): ofrecer las parecidas y crear una nueva.
+        const alt = altsFor(l, otherIdx).map(x => `<button type="button" class="btn-ghost sm" data-is="${i}" data-sid="${x.id}">Es: ${esc(x.name)}</button>`).join('');
+        acts = `<button type="button" class="btn-ghost sm" data-addroute="${i}">Agregar a R${esc(route)}</button>${alt}<button type="button" class="btn-ghost sm" data-create="${i}">Crear parada nueva</button>`;
       } else {
         const sg = (p.sug.get(l.raw) || []).map(x => `<button type="button" class="btn-ghost sm" data-is="${i}" data-sid="${x.id}">Es: ${esc(x.name)}</button>`).join('');
         meta = `<span class="meta">sin reconocer</span>`;
