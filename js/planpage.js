@@ -128,21 +128,31 @@
     let added = 0;
     fresh.filter(f => !used.has(f)).forEach(f => {            // las nuevas, en el orden natural de la ruta
       added++;
-      if (!f.stop_id) { out.push(f); return; }                // sin resolver: al final
-      const st = BV.state.stops.get(f.stop_id);
-      let at = -1;
-      if (st && st.lat != null) {
-        let best = Infinity;
-        out.forEach((o, i) => {
-          const os = o.stop_id && BV.state.stops.get(o.stop_id);
-          if (!os || os.lat == null) return;
-          const d = milesBetween(st, os); if (d < best) { best = d; at = i; }
-        });
-      }
-      if (at >= 0) out.splice(at + 1, 0, f);
-      else { const firstUnk = out.findIndex(o => !o.stop_id); out.splice(firstUnk < 0 ? out.length : firstUnk, 0, f); }
+      placeNear(out, f);
     });
     return { lines: out, added, removed };
+  }
+  // Inserta la línea f en out justo después de la parada más cercana ya puesta (sin resolver: al final; sin coordenadas: antes de las sin resolver).
+  function placeNear(out, f) {
+    if (!f.stop_id) { out.push(f); return; }
+    const st = BV.state.stops.get(f.stop_id);
+    let at = -1;
+    if (st && st.lat != null) {
+      let best = Infinity;
+      out.forEach((o, i) => {
+        const os = o.stop_id && BV.state.stops.get(o.stop_id);
+        if (!os || os.lat == null) return;
+        const d = milesBetween(st, os); if (d < best) { best = d; at = i; }
+      });
+    }
+    if (at >= 0) out.splice(at + 1, 0, f);
+    else { const firstUnk = out.findIndex(o => !o.stop_id); out.splice(firstUnk < 0 ? out.length : firstUnk, 0, f); }
+  }
+  // Una línea que acaba de quedar resuelta o agregada a la ruta deja el final y va a su lugar (junto a la más cercana).
+  function relocate(i) {
+    if (!isOrdered()) return;
+    const lines = cur().lines, l = lines[i]; if (!l || !l.stop_id) return;
+    lines.splice(i, 1); placeNear(lines, l);
   }
 
   /* ---------- pantalla ---------- */
@@ -328,6 +338,7 @@
     try {
       await BV.data.addToRoute(s.id, route, a ? a.position + 1 : null);
       p.lines.forEach(x => { x.status = statusOf(x.stop_id); });
+      relocate(i);
       toast(`${s.name} agregada a R${route}` + (a ? ` después de ${a.stop.name}` : '')); render(); save(route);
     } catch (e) { toast('No se agregó: ' + (e.message || e), 'err'); }
   }
@@ -355,6 +366,7 @@
       const s = await BV.data.createStop(name, [], c ? c.lat : null, c ? c.lng : null);
       const a = await BV.data.addAfterNearest(s.id, route, c ? c.lat : null, c ? c.lng : null);
       l.stop_id = s.id; l.status = statusOf(s.id); l.raw = l.raw;
+      relocate(creating);
       $('dlg-new').close();
       toast(`${name} creada` + (a ? ` en R${route}, después de ${a.stop.name}` : ` en R${route}` + (c ? '' : ' (sin ubicación)')));
       render(); save(route);
@@ -364,7 +376,7 @@
   function resolveAs(i, sid) {
     const p = cur(), l = p.lines[i];
     if (p.lines.some((x, j) => j !== i && x.stop_id === sid)) { toast('Esa parada ya está en el plan', 'err'); return; }
-    l.stop_id = sid; l.status = statusOf(sid); render(); save(route);
+    l.stop_id = sid; l.status = statusOf(sid); relocate(i); render(); save(route);
   }
 
   /* ---------- arrastrar para reordenar el día (solo desde el asa) ---------- */
