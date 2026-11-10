@@ -98,7 +98,7 @@
     // Si el día ya tiene un Output en una ruta con orden, se conserva tal cual (incluido lo que arrastraste):
     // solo se quitan las que ya no están en el Input y se ubican las nuevas junto a la parada más cercana del Output.
     let added = 0, removed = 0, final = lines;
-    if (isOrdered() && p.lines.some(l => l.stop_id)) {
+    if (p.lines.some(l => l.stop_id)) {
       const merged = mergeIntoOutput(p.lines, lines);
       // Si ninguna línea del Output coincide con el Input (p. ej. un resto de otra prueba), no hay orden que conservar: orden de la ruta.
       if (merged.lines.length - merged.added > 0) { final = merged.lines; added = merged.added; removed = merged.removed; }
@@ -150,7 +150,6 @@
   }
   // Una línea que acaba de quedar resuelta o agregada a la ruta deja el final y va a su lugar (junto a la más cercana).
   function relocate(i) {
-    if (!isOrdered()) return;
     const lines = cur().lines, l = lines[i]; if (!l || !l.stop_id) return;
     lines.splice(i, 1); placeNear(lines, l);
   }
