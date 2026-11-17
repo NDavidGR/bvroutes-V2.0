@@ -66,6 +66,8 @@
     sc.sort((a, b) => b.d - a.d);
     return sc.slice(0, 2).map(r => r.stop);
   }
+  // ¿Lo escrito es exactamente el nombre (o un nombre anterior) de la parada? Si no, la app la reconoció "a medias" (p. ej. "FOAN SUNRISE" -> FOAN).
+  const isExact = (raw, stop) => { const x = norm(raw); return [stop.name, stop.name_key, ...(stop.legacy_names || [])].some(k => norm(k) === x); };
   const statusOf = id => !id ? 'unk' : (BV.data.membersOf(route).some(m => m.stop_id === id) ? 'route' : (BV.state.stops.get(id) ? 'other' : 'unk'));
   const posOf = id => { const m = BV.data.membersOf(route).find(x => x.stop_id === id); return m ? m.position : null; };
   const anchorOf = stop => (stop.lat == null ? null : BV.data.nearest(route, stop.lat, stop.lng, stop.id, 1)[0] || null);
@@ -83,6 +85,9 @@
     p.sug = new Map();
     rawLines.forEach(raw => {
       const m = matchLine(raw, idx); if (!m) return;
+      if (m.stop && seen.has(m.stop.id) && !isExact(raw, m.stop)) {   // reconocida a medias y esa parada ya está en el plan: no omitir, que decida (puede ser una parada nueva)
+        p.sug.set(raw, [m.stop]); lines.push({ raw, stop_id: null, status: 'unk' }); return;
+      }
       if (m.stop) { if (seen.has(m.stop.id)) { dup++; return; } seen.add(m.stop.id); lines.push({ raw, stop_id: m.stop.id, status: statusOf(m.stop.id) }); }
       else { p.sug.set(raw, m.suggestions); lines.push({ raw, stop_id: null, status: 'unk' }); }
     });
@@ -177,11 +182,13 @@
     $('pp-out').innerHTML = p.lines.map((l, i) => {
       const s = l.stop_id ? BV.state.stops.get(l.stop_id) : null;
       let meta = '', acts = '';
-      if (l.status === 'route') { const q = posOf(l.stop_id); meta = q ? `<span class="meta">#${q} en la ruta</span>` : ''; }
+      const loose = s && !isExact(l.raw, s);
+      const typed = loose ? `<span class="meta">escribiste «${esc(String(l.raw).split('/')[0].trim())}»</span>` : '';
+      if (l.status === 'route') { const q = posOf(l.stop_id); meta = (q ? `<span class="meta">#${q} en la ruta</span>` : '') + typed; if (loose) acts = `<button type="button" class="btn-ghost sm" data-create="${i}">Crear parada nueva</button>`; }
       else if (l.status === 'other') {
         const rs = BV.data.routesOf(l.stop_id).map(m => `<b class="tag" style="${tagCol(m.route_id)}">R${esc(m.route_id)}</b>`).join(' ');
         const a = s && isOrdered() ? anchorOf(s) : null;
-        meta = `${rs}${a ? `<span class="meta">cerca de ${esc(a.stop.name)} #${a.position}</span>` : ''}`;
+        meta = `${rs}${a ? `<span class="meta">cerca de ${esc(a.stop.name)} #${a.position}</span>` : ''}${typed}`;
         // Por si la reconocida es otra parada con nombre parecido (p. ej. "Pura Vida" de otra ruta): ofrecer las parecidas y crear una nueva.
         const alt = altsFor(l, otherIdx).map(x => `<button type="button" class="btn-ghost sm" data-is="${i}" data-sid="${x.id}">Es: ${esc(x.name)}</button>`).join('');
         acts = `<button type="button" class="btn-ghost sm" data-addroute="${i}">Agregar a R${esc(route)}</button>${alt}<button type="button" class="btn-ghost sm" data-create="${i}">Crear parada nueva</button>`;
